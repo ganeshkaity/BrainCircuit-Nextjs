@@ -1,12 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getQuizSet } from "@/lib/firebase/firestore";
+import ReactMarkdown from "react-markdown";
+import { getQuizSet, getUserAttempts } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
 import GradientButton from "@/components/ui/GradientButton";
 import { useRouter } from "next/navigation";
 import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
+import { useUserStore } from "@/store/userStore";
+import { shuffleArray } from "@/lib/helpers";
 import { motion } from "framer-motion";
 import { use } from "react"; // For unwrap
 
@@ -24,6 +27,13 @@ export default function QuizDetailPage({
     queryFn: () => getQuizSet(quizId),
   });
 
+  const { firebaseUid } = useUserStore();
+  const { data: attempts } = useQuery({
+    queryKey: ["attempts", firebaseUid],
+    queryFn: () => getUserAttempts(firebaseUid!),
+    enabled: !!firebaseUid,
+  });
+
   const { initQuiz, quizId: currentQuizId, isSubmitted } = useQuizStore();
 
   const handleStart = () => {
@@ -32,9 +42,42 @@ export default function QuizDetailPage({
 
     // Only reset if it's a new quiz or previous one was submitted
     if (currentQuizId !== quizId || isSubmitted) {
-      // Shuffle all questions, then pick questionCount of them
-      const shuffled = [...quiz.questions].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, quiz.questionCount);
+      // 1. Force uniqueness of the source questions by ID
+      const uniqueSourcePool = Array.from(new Map(quiz.questions.map(q => [q.id, q])).values());
+
+      // 2. Find all previously answered question IDs for THIS quiz
+      const seenQuestionIds = new Set<string>();
+      if (attempts) {
+        attempts.forEach(a => {
+          if (a.quizId === quizId && a.answers) {
+            Object.keys(a.answers).forEach(qId => seenQuestionIds.add(qId));
+          }
+        });
+      }
+
+      // 3. Categorize into unseen and seen
+      const unseenQuestions = uniqueSourcePool.filter(q => !seenQuestionIds.has(q.id));
+      const seenQuestions = uniqueSourcePool.filter(q => seenQuestionIds.has(q.id));
+
+      let finalQuestions: any[] = [];
+      
+      // 4. Prioritize brand new questions
+      const shuffledUnseen = shuffleArray(unseenQuestions);
+      
+      if (shuffledUnseen.length >= quiz.questionCount) {
+        // We have plenty of unseen questions
+        finalQuestions = shuffledUnseen.slice(0, quiz.questionCount);
+      } else {
+        // Take all unseen questions and fill the rest from the seen pool
+        finalQuestions = [...shuffledUnseen];
+        const shuffledSeen = shuffleArray(seenQuestions);
+        const needed = quiz.questionCount - finalQuestions.length;
+        finalQuestions = [...finalQuestions, ...shuffledSeen.slice(0, Math.min(needed, shuffledSeen.length))];
+      }
+
+      // 5. Final shuffle of the selected subset for variety
+      const picked = shuffleArray(finalQuestions);
+      
       initQuiz({ quizId, questions: picked, durationMinutes: quiz.durationMinutes });
     }
     router.push(`/quiz/${quizId}/attempt`);
@@ -86,9 +129,35 @@ export default function QuizDetailPage({
           </h1>
           
           {quiz.description && (
-            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              {quiz.description}
-            </p>
+            <div className="text-gray-400 text-sm mb-6 leading-relaxed">
+              <ReactMarkdown
+                components={{
+                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                  a: ({node, ...props}) => <a className="text-purple-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-bold text-gray-200" {...props} />,
+                  em: ({node, ...props}) => <em className="italic text-gray-300" {...props} />,
+                  h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mb-2 mt-4" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-lg font-bold text-white mb-2 mt-3" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-md font-bold text-white mb-2 mt-2" {...props} />,
+                  code: ({node, className, children, ...props}: any) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !match ? (
+                      <code className="bg-white/10 text-purple-300 px-1.5 py-0.5 rounded text-xs" {...props}>
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="block bg-black/40 p-3 rounded-lg overflow-x-auto text-xs my-2 border border-white/5" {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
+                {quiz.description}
+              </ReactMarkdown>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 mb-6">

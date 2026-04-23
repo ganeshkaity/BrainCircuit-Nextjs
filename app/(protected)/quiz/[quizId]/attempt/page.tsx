@@ -353,6 +353,31 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
           
           <div className="flex gap-2">
             <button
+              onClick={() => toggleMark(q.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-default font-medium text-sm",
+                store.marked.includes(q.id) ? "bg-purple-600/30 text-purple-300 border border-purple-500/50" : "glass text-gray-300"
+              )}
+            >
+              <Bookmark size={16} className={store.marked.includes(q.id) ? "fill-purple-300" : ""} />
+              <span className="hidden sm:inline">{store.marked.includes(q.id) ? "Marked" : "Mark for Review"}</span>
+            </button>
+            
+            <GradientButton
+              onClick={() => {
+                if (window.confirm("Are you sure you want to submit the quiz? You won't be able to change your answers.")) {
+                  handleSubmit();
+                }
+              }}
+              isLoading={isSubmitting}
+              className="px-6"
+            >
+              Submit
+            </GradientButton>
+          </div>
+
+          <div className="flex gap-2">
+            <button
               onClick={prev}
               disabled={currentIndex === 0}
               className="p-2.5 rounded-xl glass disabled:opacity-30 text-white"
@@ -366,27 +391,6 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
             >
               <ChevronRight />
             </button>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => toggleMark(q.id)}
-              className={cn(
-                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-default font-medium text-sm",
-                store.marked.includes(q.id) ? "bg-purple-600/30 text-purple-300 border border-purple-500/50" : "glass text-gray-300"
-              )}
-            >
-              <Bookmark size={16} className={store.marked.includes(q.id) ? "fill-purple-300" : ""} />
-              <span className="hidden sm:inline">{store.marked.includes(q.id) ? "Marked" : "Mark for Review"}</span>
-            </button>
-            
-            <GradientButton
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-              className="px-6"
-            >
-              Submit
-            </GradientButton>
           </div>
 
         </div>
