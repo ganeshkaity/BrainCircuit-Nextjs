@@ -1,0 +1,142 @@
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  addDoc,
+  serverTimestamp,
+  Timestamp,
+  writeBatch,
+  deleteDoc,
+} from "firebase/firestore";
+import { db } from "./config";
+import type { UserProfile, QuizSet, Question, Attempt } from "@/types";
+
+// ──────────────────────────────────────────────
+// USERS
+// ──────────────────────────────────────────────
+export async function getUser(uid: string): Promise<UserProfile | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? (snap.data() as UserProfile) : null;
+}
+
+export async function createUser(uid: string, data: Partial<UserProfile>) {
+  await setDoc(doc(db, "users", uid), {
+    ...data,
+    uid,
+    points: 0,
+    level: "Rookie",
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateUser(uid: string, data: Partial<UserProfile>) {
+  await updateDoc(doc(db, "users", uid), data);
+}
+
+// ──────────────────────────────────────────────
+// QUIZ SETS
+// ──────────────────────────────────────────────
+export async function getQuizSets(params?: {
+  exam?: string;
+  language?: string;
+  classLevel?: string;
+}): Promise<QuizSet[]> {
+  let q = query(collection(db, "quiz_sets"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  let sets = snap.docs.map((d) => ({ id: d.id, ...d.data() } as QuizSet));
+
+  // client-side filter for multi-criteria (avoids composite index requirement for MVP)
+  if (params?.exam) sets = sets.filter((s) => s.exam === params.exam);
+  if (params?.language)
+    sets = sets.filter((s) => s.language === params.language);
+  if (params?.classLevel)
+    sets = sets.filter((s) => s.classLevel === params.classLevel);
+
+  return sets;
+}
+
+export async function getQuizSet(id: string): Promise<QuizSet | null> {
+  const snap = await getDoc(doc(db, "quiz_sets", id));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() } as QuizSet) : null;
+}
+
+/** Recursively remove keys with undefined values (Firestore rejects them) */
+function sanitizeForFirestore<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (_, v) => (v === undefined ? null : v)));
+}
+
+export async function createQuizSet(data: Omit<QuizSet, "id" | "createdAt">) {
+  return addDoc(collection(db, "quiz_sets"), {
+    ...sanitizeForFirestore(data),
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateQuizSet(id: string, data: Partial<QuizSet>) {
+  return updateDoc(doc(db, "quiz_sets", id), sanitizeForFirestore(data));
+}
+
+export async function deleteQuizSet(id: string) {
+  return deleteDoc(doc(db, "quiz_sets", id));
+}
+
+// ──────────────────────────────────────────────
+// ATTEMPTS
+// ──────────────────────────────────────────────
+export async function saveAttempt(attempt: Omit<Attempt, "id" | "createdAt">) {
+  return addDoc(collection(db, "attempts"), {
+    ...attempt,
+    createdAt: Timestamp.now(),
+  });
+}
+
+export async function getUserAttempts(uid: string): Promise<Attempt[]> {
+  const q = query(
+    collection(db, "attempts"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc"),
+    limit(20)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Attempt));
+}
+
+export async function getLeaderboard(exam: string, limitN = 50) {
+  const q = query(
+    collection(db, "users"),
+    where("targetExam", "==", exam),
+    orderBy("points", "desc"),
+    limit(limitN)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as UserProfile));
+}
+
+// ──────────────────────────────────────────────
+// RANKING
+// ──────────────────────────────────────────────
+export async function calculateRank(params: {
+  quizId: string;
+  score: number;
+  timeTaken: number;
+}): Promise<number> {
+  const q = query(
+    collection(db, "attempts"),
+    where("quizId", "==", params.quizId)
+  );
+  const snap = await getDocs(q);
+  const attempts = snap.docs.map((d) => d.data() as Attempt);
+  const better = attempts.filter(
+    (a) =>
+      a.score > params.score ||
+      (a.score === params.score && a.timeTaken < params.timeTaken)
+  );
+  return better.length + 1;
+}
