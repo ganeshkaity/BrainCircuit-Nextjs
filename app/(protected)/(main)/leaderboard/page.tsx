@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getLeaderboard, getUserAttempts, getQuizSets } from "@/lib/firebase/firestore";
 import { useUserStore } from "@/store/userStore";
 import Header from "@/components/layout/Header";
+import LoadingState from "@/components/ui/LoadingState";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Star, X, TrendingUp, Clock, Target, Award, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/helpers";
@@ -105,9 +106,7 @@ export default function LeaderboardPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-          </div>
+          <LoadingState message="Fetching global rankings..." />
         ) : (
           <div className="space-y-3">
             {activeLeaders.length === 0 ? (

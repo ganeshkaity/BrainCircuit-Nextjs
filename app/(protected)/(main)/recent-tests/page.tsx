@@ -9,6 +9,8 @@ import { CheckCircle, Clock, Search, Filter, CalendarDays, BookOpen, Target, Che
 import { formatTime, cn } from "@/lib/helpers";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import LoadingState from "@/components/ui/LoadingState";
+import GradientButton from "@/components/ui/GradientButton";
 
 export default function RecentTestsPage() {
   const { firebaseUid } = useUserStore();
@@ -20,6 +22,7 @@ export default function RecentTestsPage() {
   const [examFilter, setExamFilter] = useState("All");
   const [marksFilter, setMarksFilter] = useState("All");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Queries
   const { data: attempts = [], isLoading: attemptsLoading } = useQuery({
@@ -192,80 +195,92 @@ export default function RecentTestsPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-            </div>
+            <LoadingState message="Fetching your test history..." />
           ) : filteredAttempts.length > 0 ? (
-            filteredAttempts.map((a, i) => {
-              const pct = a.percentage;
-              let scoreColor = "text-red-400";
-              let ringColor = "hover:border-red-500/30";
-              if (pct === 100) { scoreColor = "text-yellow-400"; ringColor = "hover:border-yellow-500/50 ring-1 ring-yellow-500/20"; }
-              else if (pct >= 80) { scoreColor = "text-green-400"; ringColor = "hover:border-green-500/40"; }
-              else if (pct >= 50) { scoreColor = "text-orange-400"; ringColor = "hover:border-orange-500/40"; }
+            <>
+              {filteredAttempts.slice(0, visibleCount).map((a, i) => {
+                const pct = a.percentage;
+                let scoreColor = "text-red-400";
+                let ringColor = "hover:border-red-500/30";
+                if (pct === 100) { scoreColor = "text-yellow-400"; ringColor = "hover:border-yellow-500/50 ring-1 ring-yellow-500/20"; }
+                else if (pct >= 80) { scoreColor = "text-green-400"; ringColor = "hover:border-green-500/40"; }
+                else if (pct >= 50) { scoreColor = "text-orange-400"; ringColor = "hover:border-orange-500/40"; }
 
-              return (
-                <motion.div 
-                  key={a.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => router.push(`/quiz/${a.quizId}/result?attemptId=${a.id}`)}
-                  className={cn(
-                    "glass-md rounded-2xl p-4 border border-white/5 cursor-pointer transition-all active:scale-[0.98] group",
-                    ringColor
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="pr-4">
-                      <h3 className="font-bold text-white text-base leading-tight group-hover:text-purple-300 transition-colors">
-                        {a.quiz?.title || "Unknown Quiz"}
-                      </h3>
-                      <div className="flex gap-2 mt-2">
-                        {a.quiz?.exam && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
-                            {a.quiz.exam}
-                          </span>
-                        )}
-                        {a.quiz?.subjects?.slice(0,2).map(sub => (
-                          <span key={sub} className="text-[9px] font-bold px-2 py-0.5 rounded bg-white/5 text-gray-300 border border-white/10 uppercase">
-                            {sub}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="text-right shrink-0">
-                      <div className={cn("text-xl font-black", scoreColor)}>
-                        {pct}<span className="text-sm opacity-50">%</span>
-                      </div>
-                      <p className="text-xs font-medium text-gray-400 mt-1">
-                        {a.score} / {a.maxScore}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex gap-4">
-                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                        <Clock size={12} className="text-purple-400" /> 
-                        {formatTime(a.timeTaken)}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                        <Target size={12} className="text-green-400" />
-                        +{a.pointsEarned} pts
-                      </span>
-                    </div>
-                    {a.createdAt && (
-                      <span className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold tracking-wider">
-                        <CalendarDays size={10} />
-                        {new Date((a.createdAt as any).seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}
-                      </span>
+                return (
+                  <motion.div 
+                    key={a.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: (i % 10) * 0.05 }}
+                    onClick={() => router.push(`/quiz/${a.quizId}/result?attemptId=${a.id}`)}
+                    className={cn(
+                      "glass-md rounded-2xl p-4 border border-white/5 cursor-pointer transition-all active:scale-[0.98] group",
+                      ringColor
                     )}
-                  </div>
-                </motion.div>
-              );
-            })
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="pr-4">
+                        <h3 className="font-bold text-white text-base leading-tight group-hover:text-purple-300 transition-colors">
+                          {a.quiz?.title || "Unknown Quiz"}
+                        </h3>
+                        <div className="flex gap-2 mt-2">
+                          {a.quiz?.exam && (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                              {a.quiz.exam}
+                            </span>
+                          )}
+                          {a.quiz?.subjects?.slice(0,2).map(sub => (
+                            <span key={sub} className="text-[9px] font-bold px-2 py-0.5 rounded bg-white/5 text-gray-300 border border-white/10 uppercase">
+                              {sub}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="text-right shrink-0">
+                        <div className={cn("text-xl font-black", scoreColor)}>
+                          {pct}<span className="text-sm opacity-50">%</span>
+                        </div>
+                        <p className="text-xs font-medium text-gray-400 mt-1">
+                          {a.score} / {a.maxScore}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="flex gap-4">
+                        <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <Clock size={12} className="text-purple-400" /> 
+                          {formatTime(a.timeTaken)}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <Target size={12} className="text-green-400" />
+                          +{a.pointsEarned} pts
+                        </span>
+                      </div>
+                      {a.createdAt && (
+                        <span className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold tracking-wider">
+                          <CalendarDays size={10} />
+                          {new Date((a.createdAt as any).seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Show More Button */}
+              {visibleCount < filteredAttempts.length && (
+                <div className="pt-4 flex justify-center">
+                  <GradientButton 
+                    onClick={() => setVisibleCount(v => v + 10)}
+                    className="px-8"
+                  >
+                    Show More
+                  </GradientButton>
+                </div>
+              )}
+            </>
           ) : (
             <div className="glass rounded-2xl p-10 text-center flex flex-col items-center">
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
