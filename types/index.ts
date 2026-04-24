@@ -25,6 +25,7 @@ export interface UserProfile {
   isAdmin?: boolean;
   profileComplete: boolean;
   nameUpdatedAt?: string; // ISO string to track 1-month limit
+  personalRecommendations?: boolean;
   createdAt: Timestamp;
 }
 
@@ -76,6 +77,7 @@ export interface Attempt {
   answers: Record<string, number[]>; // questionId -> selectedOption indices
   questionTimes?: Record<string, number>; // questionId -> time spent in seconds
   questionIds?: string[]; // IDs of questions included in this specific attempt
+  questions?: Question[]; // Snapshot of questions (including shuffled options) for this attempt
   score: number;
   maxScore: number;
   percentage?: number; // stored to 3 decimal places e.g. 66.667

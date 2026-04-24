@@ -6,17 +6,28 @@ import { getQuizSets, getOnboardingOptions, getUserAttempts } from "@/lib/fireba
 import { useUserStore } from "@/store/userStore";
 import Header from "@/components/layout/Header";
 import QuizCard from "@/components/cards/QuizCard";
+import GradientButton from "@/components/ui/GradientButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { Globe, BookOpen, Tag, ChevronDown, Filter, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/helpers";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function HomePage() {
   const { user, firebaseUid } = useUserStore();
-  const [filterExam, setFilterExam] = useState(user?.targetExam || "");
+  const [filterExam, setFilterExam] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
   const [filterLanguage, setFilterLanguage] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [showCompletedOnly, setShowCompletedOnly] = useState(false);
+
+  // Initialize filter based on personal recommendations
+  useEffect(() => {
+    if (user?.personalRecommendations && user?.targetExam && !filterExam) {
+      setFilterExam(user.targetExam);
+    }
+  }, [user]);
 
   const { data: attempts = [] } = useQuery({
     queryKey: ["attempts", firebaseUid],
@@ -36,6 +47,17 @@ export default function HomePage() {
 
   const isLoading = isLoadingQuizzes || !options;
 
+  const perfectQuizIds = useMemo(() => {
+    const set = new Set<string>();
+    attempts.forEach((a: any) => {
+      const q = quizzes.find((quiz: any) => quiz.id === a.quizId);
+      if (q && a.score === q.totalMarks) {
+        set.add(a.quizId);
+      }
+    });
+    return set;
+  }, [attempts, quizzes]);
+
   const filtered = useMemo(() => {
     return quizzes.filter((q: any) => {
       // Hide unpublished quizzes for students
@@ -50,9 +72,16 @@ export default function HomePage() {
         q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (q.description || "").toLowerCase().includes(searchQuery.toLowerCase());
       
-      return matchExam && matchSubject && matchLanguage && matchTag && matchSearch;
+      const matchCompleted = showCompletedOnly || !perfectQuizIds.has(q.id);
+
+      return matchExam && matchSubject && matchLanguage && matchTag && matchSearch && matchCompleted;
     });
-  }, [quizzes, filterExam, filterSubject, filterLanguage, filterTag, searchQuery]);
+  }, [quizzes, filterExam, filterSubject, filterLanguage, filterTag, searchQuery, showCompletedOnly, perfectQuizIds]);
+
+  const displayQuizzes = useMemo(() => {
+    if (searchQuery) return filtered;
+    return filtered.slice(0, visibleCount);
+  }, [filtered, visibleCount, searchQuery]);
 
   return (
     <main className="min-h-dvh pb-24 pt-16">
@@ -80,6 +109,46 @@ export default function HomePage() {
               <p className="text-gray-400 text-sm font-medium">Please log in to start practicing quizzes.</p>
             </>
           )}
+        </motion.div>
+
+        {/* Filter Section Label */}
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-3 px-1 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 bg-purple-500 rounded-full" />
+            <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">
+              Filter Options :
+            </h2>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <span className={cn(
+              "text-[10px] font-black uppercase tracking-widest transition-colors",
+              showCompletedOnly ? "text-purple-400" : "text-gray-500 group-hover:text-gray-300"
+            )}>
+              {showCompletedOnly ? "Showing All" : "Hide Completed"}
+            </span>
+            <div className="relative">
+              <input 
+                type="checkbox" 
+                className="sr-only" 
+                checked={showCompletedOnly}
+                onChange={(e) => setShowCompletedOnly(e.target.checked)}
+              />
+              <div className={cn(
+                "w-8 h-4 rounded-full transition-all duration-300",
+                showCompletedOnly ? "bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]" : "bg-white/10"
+              )} />
+              <div className={cn(
+                "absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-sm",
+                showCompletedOnly ? "translate-x-4" : "translate-x-0"
+              )} />
+            </div>
+          </label>
         </motion.div>
 
         {/* New Dropdown Filter Section */}
@@ -156,25 +225,37 @@ export default function HomePage() {
 
         {/* Quiz Grid */}
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent animate-spin shadow-glow-purple" />
-          </div>
+          <LoadingState message="Preparing your dashboard..." />
         ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((quiz: any, i: number) => (
-              <motion.div
-                key={quiz.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <QuizCard 
-                  quiz={quiz} 
-                  attempts={attempts.filter((a: any) => a.quizId === quiz.id)}
-                />
-              </motion.div>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayQuizzes.map((quiz: any, i: number) => (
+                <motion.div
+                  key={quiz.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: (i % 20) * 0.05 }}
+                >
+                  <QuizCard 
+                    quiz={quiz} 
+                    attempts={attempts.filter((a: any) => a.quizId === quiz.id)}
+                  />
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {!searchQuery && visibleCount < filtered.length && (
+              <div className="mt-12 flex justify-center pb-12">
+                <GradientButton 
+                  onClick={() => setVisibleCount(v => v + 20)}
+                  className="px-8"
+                >
+                  Load More
+                </GradientButton>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20 glass-dark rounded-[2.5rem] border border-white/5">
             <Filter size={48} className="mx-auto mb-4 text-gray-700" />

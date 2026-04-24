@@ -27,18 +27,34 @@ export default function QuizCard({ quiz, attempts = [] }: QuizCardProps) {
     }, 50);
   };
 
+  const isPerfect = attempts.some(a => a.score === quiz.totalMarks);
+
   return (
     <div onClick={handleClick} className="block h-full cursor-pointer group">
       <GlassCard hover className="h-full flex flex-col relative pt-8">
-        {/* Top Right Action Icon */}
-        <div className="absolute top-4 right-4 text-gray-500 group-hover:text-purple-400 transition-colors">
-          {isLoading ? (
-            <Loader2 size={18} className="animate-spin text-purple-400" />
-          ) : (
-            <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
-          )}
-        </div>
-        {/* Left Edge Banner Badge - Overlapping Top Border */}
+        {/* Top Right 45deg Completed Ribbon */}
+        {isPerfect && (
+          <div className="absolute top-0 right-0 w-20 h-20 overflow-hidden rounded-tr-2xl z-20 pointer-events-none">
+            <div className="absolute top-[14px] -right-[24px] w-[100px] py-0.5 bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 shadow-lg transform rotate-45 flex items-center justify-center border-y border-white/20">
+              <span className="text-[8px] font-black uppercase tracking-[0.05em] text-white drop-shadow-sm">
+                Full Scored
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Top Right Action Icon - Hidden if Completed */}
+        {!isPerfect && (
+          <div className="absolute top-4 right-4 text-gray-500 group-hover:text-purple-400 transition-colors">
+            {isLoading ? (
+              <Loader2 size={18} className="animate-spin text-purple-400" />
+            ) : (
+              <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
+            )}
+          </div>
+        )}
+
+        {/* Left Edge Banner Badge */}
         {quiz.badge && (
           <div className="absolute -top-1 -left-2 z-20 drop-shadow-md">
             <div 
@@ -47,8 +63,10 @@ export default function QuizCard({ quiz, attempts = [] }: QuizCardProps) {
             >
               {quiz.badge.label}
             </div>
-            {/* Side Fold Shadow */}
-            <div className="absolute top-full left-0 w-2 h-2 bg-black/60 [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+            {/* Side Fold Shadow - Darkened version of badge color */}
+            <div 
+              className={`absolute top-full left-0 w-2 h-2 bg-gradient-to-r ${quiz.badge.color} brightness-[0.3] contrast-[1.2] [clip-path:polygon(0_0,100%_0,100%_100%)]`} 
+            />
           </div>
         )}
 

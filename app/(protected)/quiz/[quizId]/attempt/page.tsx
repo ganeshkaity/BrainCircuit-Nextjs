@@ -76,6 +76,13 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
     return () => clearInterval(interval);
   }, [isSubmitted, isSubmitting, store.remainingSeconds]);
 
+  // Bounce back if already submitted (prevents manual re-entry via back button)
+  useEffect(() => {
+    if (isSubmitted && !isSubmitting) {
+      router.replace("/home");
+    }
+  }, [isSubmitted, isSubmitting, router]);
+
   // Visit on mount/index change
   useEffect(() => {
     if (questions[currentIndex]) {
@@ -114,6 +121,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
         answers,
         questionTimes: store.questionTimes,
         questionIds: questions.map(q => q.id),
+        questions, 
         score,
         maxScore: quiz.totalMarks,
         percentage: parseFloat(((score / quiz.totalMarks) * 100).toFixed(3)),
@@ -191,6 +199,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
   if (!questions.length) {
     return (
       <main className="min-h-dvh flex items-center justify-center p-6 text-center">
+        <Header title="Quiz" showBack onBack={() => router.push("/home")} />
         <div>
           <p className="text-gray-400 mb-4">Quiz session not found or expired.</p>
           <GradientButton onClick={() => router.push(`/quiz/${quizId}`)}>Go Back</GradientButton>

@@ -7,13 +7,14 @@ import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import GradientButton from "@/components/ui/GradientButton";
 import { useRouter } from "next/navigation";
-import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight, Loader2 } from "lucide-react";
+import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight, Loader2, Target, Calendar } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
 import { useUIStore } from "@/store/uiStore";
-import { shuffleArray } from "@/lib/helpers";
+import { shuffleArray, formatTime } from "@/lib/helpers";
 import { motion } from "framer-motion";
 import { use, useState } from "react"; // For unwrap
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function QuizDetailPage({
   params,
@@ -58,38 +59,38 @@ export default function QuizDetailPage({
       // 1. Force uniqueness of the source questions by ID
       const uniqueSourcePool = Array.from(new Map(quiz.questions.map(q => [q.id, q])).values());
 
-      // 2. Find all previously answered question IDs for THIS quiz
-      const seenQuestionIds = new Set<string>();
-      if (attempts) {
-        attempts.forEach(a => {
-          if (a.quizId === quizId && a.answers) {
-            Object.keys(a.answers).forEach(qId => seenQuestionIds.add(qId));
+      // 2. Pick N random questions from the entire pool
+      const selectedPool = shuffleArray(uniqueSourcePool).slice(0, quiz.questionCount);
+
+      // 3. Shuffle both the picking order and the internal options
+      const picked = shuffleArray(selectedPool).map(q => {
+        if (q.type === "integer" || !q.options) return q;
+
+        // Deduplicate options while preserving correctness
+        const seenOptions = new Set<string>();
+        const uniqueOptionsWithCorrectness = q.options.reduce((acc: any[], opt: string, idx: number) => {
+          const trimmedOpt = opt.trim();
+          if (!seenOptions.has(trimmedOpt)) {
+            seenOptions.add(trimmedOpt);
+            acc.push({ text: trimmedOpt, isCorrect: q.correctOptions.includes(idx) });
+          } else if (q.correctOptions.includes(idx)) {
+            // If this duplicate was correct, ensure the existing unique one is also marked correct
+            const existing = acc.find(o => o.text === trimmedOpt);
+            if (existing) existing.isCorrect = true;
           }
-        });
-      }
+          return acc;
+        }, []);
 
-      // 3. Categorize into unseen and seen
-      const unseenQuestions = uniqueSourcePool.filter(q => !seenQuestionIds.has(q.id));
-      const seenQuestions = uniqueSourcePool.filter(q => seenQuestionIds.has(q.id));
+        const shuffledOptions = shuffleArray(uniqueOptionsWithCorrectness);
 
-      let finalQuestions: any[] = [];
-      
-      // 4. Prioritize brand new questions
-      const shuffledUnseen = shuffleArray(unseenQuestions);
-      
-      if (shuffledUnseen.length >= quiz.questionCount) {
-        // We have plenty of unseen questions
-        finalQuestions = shuffledUnseen.slice(0, quiz.questionCount);
-      } else {
-        // Take all unseen questions and fill the rest from the seen pool
-        finalQuestions = [...shuffledUnseen];
-        const shuffledSeen = shuffleArray(seenQuestions);
-        const needed = quiz.questionCount - finalQuestions.length;
-        finalQuestions = [...finalQuestions, ...shuffledSeen.slice(0, Math.min(needed, shuffledSeen.length))];
-      }
-
-      // 5. Final shuffle of the selected subset for variety
-      const picked = shuffleArray(finalQuestions);
+        return {
+          ...q,
+          options: shuffledOptions.map((o: any) => o.text),
+          correctOptions: shuffledOptions
+            .map((o: any, idx: number) => o.isCorrect ? idx : -1)
+            .filter((idx: number) => idx !== -1)
+        };
+      });
       
       initQuiz({ quizId, questions: picked, durationMinutes: quiz.durationMinutes });
     }
@@ -101,11 +102,7 @@ export default function QuizDetailPage({
   };
 
   if (isLoading) {
-    return (
-      <main className="min-h-dvh flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-      </main>
-    );
+    return <LoadingState message="Fetching quiz details..." />;
   }
 
   if (!quiz) {
@@ -119,11 +116,13 @@ export default function QuizDetailPage({
 
   const isResume = currentQuizId === quizId && !isSubmitted;
 
-  return (
-    <main className="min-h-dvh pb-24 pt-16">
-      <Header showBack />
-
-      <div className="max-w-xl mx-auto px-5 mt-6">
+    const hasAttempted = attempts && attempts.some(a => a.quizId === quizId);
+  
+    return (
+      <main className="min-h-dvh pb-24 pt-16">
+        <Header showBack onBack={() => router.push("/home")} />
+  
+        <div className="max-w-xl mx-auto px-5 mt-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -212,6 +211,63 @@ export default function QuizDetailPage({
             </div>
           </div>
 
+          {/* Previous Attempts Section */}
+          {attempts && attempts.filter(a => a.quizId === quizId).length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs font-medium text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Target size={14} className="text-purple-400" /> Your Performance History
+              </h3>
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
+                {attempts
+                  .filter(a => a.quizId === quizId)
+                  .sort((a, b) => {
+                    const timeA = (a.createdAt as any)?.seconds || 0;
+                    const timeB = (b.createdAt as any)?.seconds || 0;
+                    return timeB - timeA;
+                  })
+                  .map((attempt, idx) => (
+                    <div key={idx} className="glass border border-white/5 hover:border-white/15 rounded-2xl p-3 flex items-center justify-between transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex flex-col items-center justify-center border",
+                          attempt.score === quiz.totalMarks ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-white/5 border-white/10 text-white"
+                        )}>
+                          <span className="text-xs font-black leading-none">{attempt.score}</span>
+                          <span className="text-[7px] font-bold uppercase tracking-tighter opacity-60">Marks</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[10px] font-bold text-gray-300">Attempt #{attempts.filter(a => a.quizId === quizId).length - idx}</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-600" />
+                            <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                              <Calendar size={10} /> {new Date((attempt.createdAt as any)?.seconds * 1000).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                              <Target size={11} className="text-orange-400/80" />
+                              <span className="font-medium">{attempt.percentage}% Acc.</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                              <Clock size={11} className="text-blue-400/80" />
+                              <span className="font-medium">{formatTime(attempt.timeTaken)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => router.push(`/quiz/${quizId}/result?attemptId=${attempt.id}`)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
+                        title="View Full Result"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
           <GradientButton size="lg" fullWidth onClick={handleStart} disabled={isStarting}>
             {isStarting ? (
               <>
@@ -219,7 +275,7 @@ export default function QuizDetailPage({
               </>
             ) : (
               <>
-                {isResume ? "Resume Quiz" : "Start Quiz"} <ChevronRight size={18} />
+                {isResume ? "Resume Quiz" : (hasAttempted ? "Retake Quiz" : "Start Quiz")} <ChevronRight size={18} />
               </>
             )}
           </GradientButton>
@@ -228,4 +284,9 @@ export default function QuizDetailPage({
       <BottomNav />
     </main>
   );
+}
+
+// Helper for conditional classes
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
 }

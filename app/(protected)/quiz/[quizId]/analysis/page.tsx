@@ -9,6 +9,8 @@ import Header from "@/components/layout/Header";
 import { CheckCircle, XCircle, MinusCircle, BookOpen, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/helpers";
 import { motion, AnimatePresence } from "framer-motion";
+import type { QuizSet, Question } from "@/types";
+import LoadingState from "@/components/ui/LoadingState";
 
 type FilterTab = "all" | "correct" | "wrong" | "unattempted";
 
@@ -38,36 +40,32 @@ export default function AnalysisPage({ params }: { params: Promise<{ quizId: str
 
   const attempt = directAttempt || attempts?.find(a => a.quizId === quizId);
 
-  // Only show questions that were actually in this attempt.
-  // Use stored questionIds (new attempts) or fall back to answered question IDs (old attempts).
-  const attemptQuestionIds: string[] = attempt?.questionIds
-    ?? Object.keys(attempt?.answers ?? {});
-
-  // Preserve the original order from the attempt
-  const allQuestions = attemptQuestionIds
-    .map(id => (quiz?.questions ?? []).find(q => q.id === id))
-    .filter(Boolean) as NonNullable<typeof quiz>["questions"];
-
   const isLoading = quizLoading || (attemptId ? directLoading : attemptsLoading);
-
-  if (isLoading || !attempt || !quiz) {
-    return (
-      <main className="min-h-dvh flex items-center justify-center bg-gray-950">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-      </main>
-    );
-  }
-
-  // Pre-compute statuses
-  const questionData = allQuestions.map((q) => {
-    const userAns = attempt.answers[q.id] || [];
-    const isAttempted = userAns.length > 0;
-    const userAnsStr = [...userAns].sort().join(",");
-    const correctAnsStr = [...q.correctOptions].sort().join(",");
-    const isCorrect = isAttempted && userAnsStr === correctAnsStr;
-    const isWrong = isAttempted && !isCorrect;
-    return { q, userAns, isAttempted, isCorrect, isWrong };
-  });
+  
+    if (isLoading || !attempt || !quiz) {
+      return <LoadingState message="Analyzing your performance..." />;
+    }
+  
+    // Only show questions that were actually in this attempt.
+    // Use stored questionIds (new attempts) or fall back to answered question IDs (old attempts).
+    const attemptQuestionIds: string[] = attempt.questionIds
+      ?? Object.keys(attempt.answers ?? {});
+  
+    // Preserve the actual questions from the attempt (shuffled) or fall back to original
+    const allQuestions = attempt.questions ?? attemptQuestionIds
+      .map(id => (quiz.questions ?? []).find(q => q.id === id))
+      .filter(Boolean) as QuizSet["questions"];
+  
+    // Pre-compute statuses
+    const questionData = allQuestions.map((q) => {
+      const userAns = attempt.answers[q.id] || [];
+      const isAttempted = userAns.length > 0;
+      const userAnsStr = [...userAns].sort().join(",");
+      const correctAnsStr = [...q.correctOptions].sort().join(",");
+      const isCorrect = isAttempted && userAnsStr === correctAnsStr;
+      const isWrong = isAttempted && !isCorrect;
+      return { q, userAns, isAttempted, isCorrect, isWrong };
+    });
 
   const correctCount = questionData.filter(d => d.isCorrect).length;
   const wrongCount = questionData.filter(d => d.isWrong).length;

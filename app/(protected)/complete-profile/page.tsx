@@ -25,6 +25,7 @@ export default function CompleteProfilePage() {
     classLevel: "",
     targetExam: "",
     dob: "",
+    personalRecommendations: false,
   });
 
   // Set defaults once options are loaded
@@ -62,6 +63,7 @@ export default function CompleteProfilePage() {
         classLevel: form.classLevel,
         targetExam: form.targetExam,
         dob: form.dob,
+        personalRecommendations: form.personalRecommendations,
         profileComplete: true,
       });
       const updated = await getUser(firebaseUid);
@@ -150,6 +152,27 @@ export default function CompleteProfilePage() {
               max={new Date().toISOString().split("T")[0]}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none [color-scheme:dark]"
             />
+          </div>
+
+          {/* Personal Recommendations Toggle */}
+          <div className="flex items-center justify-between p-3 bg-purple-500/5 rounded-2xl border border-purple-500/10">
+            <div className="flex-1 pr-4">
+              <p className="text-[13px] font-bold text-white leading-none mb-1">Personal Recommendations</p>
+              <p className="text-[10px] text-gray-400 leading-tight">Auto-filter quizzes by your target exam ({form.targetExam || '...' })</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, personalRecommendations: !f.personalRecommendations }))}
+              className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none ${
+                form.personalRecommendations ? "bg-purple-600" : "bg-gray-700"
+              }`}
+            >
+              <motion.div
+                animate={{ x: form.personalRecommendations ? 21 : 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm"
+              />
+            </button>
           </div>
 
           <GradientButton type="submit" fullWidth isLoading={loading} className="mt-4">

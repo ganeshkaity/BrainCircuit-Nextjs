@@ -11,6 +11,7 @@ import GradientButton from "@/components/ui/GradientButton";
 import { Trophy, Clock, Target, ArrowRight, BarChart2 } from "lucide-react";
 import { formatTime, cn } from "@/lib/helpers";
 import { motion, AnimatePresence } from "framer-motion";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function ResultPage({ params }: { params: Promise<{ quizId: string }> }) {
   const router = useRouter();
@@ -83,11 +84,7 @@ export default function ResultPage({ params }: { params: Promise<{ quizId: strin
   }, [attempt, quiz]);
 
   if (quizLoading || (attemptId ? directLoading : allAttemptsLoading) || (attempt && rankLoading)) {
-    return (
-      <main className="min-h-dvh flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-      </main>
-    );
+    return <LoadingState message="Calculating your final score..." />;
   }
 
   if (!attempt || !quiz) {
@@ -143,7 +140,7 @@ export default function ResultPage({ params }: { params: Promise<{ quizId: strin
 
   return (
     <main className="min-h-dvh pb-10 pt-16">
-      <Header title="Quiz Result" />
+      <Header title="Quiz Result" showBack onBack={() => router.push("/home")} />
 
       <div className="max-w-xl mx-auto px-5 mt-6 space-y-6">
         {/* Main Score Card */}

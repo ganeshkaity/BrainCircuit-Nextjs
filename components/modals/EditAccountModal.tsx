@@ -37,6 +37,7 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
   const [name, setName] = useState("");
   const [classLevel, setClassLevel] = useState("");
   const [targetExam, setTargetExam] = useState("");
+  const [personalRecommendations, setPersonalRecommendations] = useState(false);
 
   const isGoogleLinked = auth.currentUser?.providerData.some(p => p.providerId === 'google.com');
   const isPasswordLinked = auth.currentUser?.providerData.some(p => p.providerId === 'password');
@@ -46,6 +47,7 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
       setName(user.displayName);
       setClassLevel(user.classLevel);
       setTargetExam(user.targetExam);
+      setPersonalRecommendations(user.personalRecommendations || false);
       setError(null);
       setSuccess(null);
     }
@@ -84,6 +86,7 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
 
       if (classLevel !== user.classLevel) updates.classLevel = classLevel;
       if (targetExam !== user.targetExam) updates.targetExam = targetExam;
+      if (personalRecommendations !== (user.personalRecommendations || false)) updates.personalRecommendations = personalRecommendations;
 
       if (Object.keys(updates).length > 0) {
         const userRef = doc(db, "users", user.uid);
@@ -245,6 +248,27 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Personal Recommendations Toggle */}
+              <div className="flex items-center justify-between p-3 bg-purple-500/5 rounded-2xl border border-purple-500/10">
+                <div className="flex-1 pr-4">
+                  <p className="text-sm font-bold text-white mb-0.5">Personal Recommendations</p>
+                  <p className="text-[10px] text-gray-400 leading-tight">Auto-filter quizzes based on your target exam ({targetExam})</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPersonalRecommendations(!personalRecommendations)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
+                    personalRecommendations ? "bg-purple-600" : "bg-gray-700"
+                  }`}
+                >
+                  <motion.div
+                    animate={{ x: personalRecommendations ? 22 : 2 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
+                  />
+                </button>
               </div>
             </div>
 
