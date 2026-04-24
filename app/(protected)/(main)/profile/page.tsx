@@ -215,6 +215,15 @@ export default function ProfilePage() {
         >
           <LogOut size={18} /> Log Out
         </button>
+
+        <div className="flex flex-col items-center gap-1 opacity-20 mt-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+            Brain Circuit
+          </p>
+          <p className="text-[9px] font-bold text-purple-400">
+            v 1.0.0
+          </p>
+        </div>
       </div>
 
       <EditAccountModal 

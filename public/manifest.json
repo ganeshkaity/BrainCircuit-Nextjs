@@ -1,5 +1,6 @@
 {
   "name": "Brain Circuit",
+  "version": "1.0.0",
   "short_name": "BrainCircuit",
   "description": "Brain Circuit is a premium NEET & JEE Exam Simulator. Practice high-yield questions, take timed grand tests, and track your All India Rank to succeed in your engineering and medical entrance exams.",
   "start_url": "/home",

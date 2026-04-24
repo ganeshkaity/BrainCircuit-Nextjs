@@ -43,6 +43,8 @@ export default function LeaderboardPage() {
     enabled: !!(user || firebaseUid),
   });
 
+  const activeLeaders = useMemo(() => leaders.filter(l => (l.points || 0) > 0), [leaders]);
+
   const { data: attempts = [], isLoading: isLoadingAttempts } = useQuery<Attempt[]>({
     queryKey: ["user_attempts", selectedProfile?.uid],
     queryFn: () => (selectedProfile ? getUserAttempts(selectedProfile.uid) : Promise.resolve([])) as any,
@@ -108,14 +110,14 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {leaders.length === 0 ? (
+            {activeLeaders.length === 0 ? (
               <div className="glass rounded-2xl p-8 text-center border border-white/5">
                 <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
-                <p className="text-gray-400 text-sm font-medium">No participants yet for {user?.targetExam}.</p>
+                <p className="text-gray-400 text-sm font-medium">No active participants yet for {user?.targetExam}.</p>
                 <p className="text-gray-600 text-xs mt-1 uppercase font-bold tracking-widest">Be the first to take a quiz!</p>
               </div>
             ) : (
-              leaders.map((leader, index) => {
+              activeLeaders.map((leader, index) => {
               const isTop3 = index < 3;
               const isMe = leader.uid === (user?.uid || firebaseUid);
               

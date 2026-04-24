@@ -1,28 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getQuizSets, getOnboardingOptions, getUserAttempts } from "@/lib/firebase/firestore";
 import { useUserStore } from "@/store/userStore";
 import Header from "@/components/layout/Header";
 import QuizCard from "@/components/cards/QuizCard";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Globe, BookOpen, Tag, ChevronDown, Filter, LayoutGrid } from "lucide-react";
+import { cn } from "@/lib/helpers";
 
 export default function HomePage() {
   const { user, firebaseUid } = useUserStore();
   const [filterExam, setFilterExam] = useState(user?.targetExam || "");
   const [filterSubject, setFilterSubject] = useState("");
+  const [filterLanguage, setFilterLanguage] = useState("");
+  const [filterTag, setFilterTag] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: attempts = [] } = useQuery({
     queryKey: ["attempts", firebaseUid],
-    queryFn: () => getUserAttempts(firebaseUid!),
+    queryFn: () => (firebaseUid ? getUserAttempts(firebaseUid) : Promise.resolve([])) as any,
     enabled: !!firebaseUid,
   });
 
   const { data: quizzes = [], isLoading: isLoadingQuizzes } = useQuery({
     queryKey: ["quizzes"],
-    queryFn: () => getQuizSets(),
+    queryFn: () => getQuizSets() as any,
   });
 
   const { data: options } = useQuery({
@@ -32,20 +36,23 @@ export default function HomePage() {
 
   const isLoading = isLoadingQuizzes || !options;
 
-  const examOptions = options ? ["All", ...options.exams] : ["All"];
-  const subjectOptions = options ? ["All", ...options.subjects] : ["All"];
+  const filtered = useMemo(() => {
+    return quizzes.filter((q: any) => {
+      // Hide unpublished quizzes for students
+      if (q.isPublished === false) return false;
 
-  const filtered = quizzes.filter((q) => {
-    const matchExam = !filterExam || q.exam === filterExam;
-    const matchSubject = searchQuery 
-      ? true // Ignore subject sub-filter when searching
-      : (!filterSubject || (q.subjects && q.subjects.includes(filterSubject)));
-    const matchSearch =
-      !searchQuery ||
-      q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (q.description || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchExam && matchSubject && matchSearch;
-  });
+      const matchExam = !filterExam || q.exam === filterExam;
+      const matchSubject = !filterSubject || (q.subjects && q.subjects.includes(filterSubject));
+      const matchLanguage = !filterLanguage || q.language === filterLanguage;
+      const matchTag = !filterTag || (q.badge && (typeof q.badge === 'string' ? q.badge === filterTag : q.badge.label === filterTag));
+      const matchSearch =
+        !searchQuery ||
+        q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (q.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return matchExam && matchSubject && matchLanguage && matchTag && matchSearch;
+    });
+  }, [quizzes, filterExam, filterSubject, filterLanguage, filterTag, searchQuery]);
 
   return (
     <main className="min-h-dvh pb-24 pt-16">
@@ -56,114 +63,217 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="mb-8"
         >
           {user ? (
             <>
-              <h1 className="text-2xl font-display font-bold text-white mb-1">
-                Hello, <span className="gradient-text">{user.displayName?.split(" ")[0] || "Student"}</span>!
+              <h1 className="text-3xl font-black text-white mb-1 tracking-tight">
+                Hello, <span className="text-purple-400">{user.displayName?.split(" ")[0] || "Student"}</span>!
               </h1>
-              <p className="text-gray-400 text-sm">Ready to crack {user.targetExam || "your exam"}?</p>
+              <p className="text-gray-400 text-sm font-medium">Find your next challenge and excel.</p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-display font-bold text-white mb-1">
-                Welcome to <span className="gradient-text">Brain Circuit</span>!
+              <h1 className="text-3xl font-black text-white mb-1 tracking-tight">
+                Welcome to <span className="text-purple-400">Brain Circuit</span>!
               </h1>
-              <p className="text-gray-400 text-sm">Please log in to start practicing quizzes and track your progress.</p>
+              <p className="text-gray-400 text-sm font-medium">Please log in to start practicing quizzes.</p>
             </>
           )}
         </motion.div>
 
-        {/* Exam Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-2">
-          {examOptions.map((exam) => {
-            const val = exam === "All" ? "" : exam;
-            const active = filterExam === val;
-            return (
-              <button
-                key={exam}
-                onClick={() => setFilterExam(val)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-default border backdrop-blur-md ${
-                  active
-                    ? "bg-purple-600/80 border-purple-400 text-white shadow-lg shadow-purple-900/40"
-                    : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:border-white/20"
-                }`}
-              >
-                {exam}
-              </button>
-            );
-          })}
-        </div>
+        {/* New Dropdown Filter Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10 p-4 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md relative z-50"
+        >
+          {/* Language Filter */}
+          <FilterDropdown 
+            label="Language" 
+            icon={<Globe size={16} />} 
+            value={filterLanguage} 
+            options={options?.languages || []} 
+            onChange={setFilterLanguage} 
+          />
 
-        {/* Subject Sub-filters */}
-        <div className="flex gap-2 overflow-x-auto pb-4 pt-2 mb-4">
-          {subjectOptions.map((subject) => {
-            const val = subject === "All" ? "" : subject;
-            const active = filterSubject === val;
-            return (
-              <button
-                key={subject}
-                onClick={() => setFilterSubject(val)}
-                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-default border ${
-                  active
-                    ? "bg-blue-600/80 border-blue-500 text-white"
-                    : "bg-white/10 text-gray-400 border-white/10 hover:bg-white/20 hover:text-gray-200"
-                }`}
-              >
-                {subject}
-              </button>
-            );
-          })}
-        </div>
+          {/* Exam Filter */}
+          <FilterDropdown 
+            label="Exam" 
+            icon={<BookOpen size={16} />} 
+            value={filterExam} 
+            options={options?.exams || []} 
+            onChange={setFilterExam} 
+          />
 
-        {/* Active search indicator */}
-        {searchQuery && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-gray-400 mb-4"
-          >
-            Results for <span className="text-white font-medium">&quot;{searchQuery}&quot;</span>
-            &nbsp;— {filtered.length} {filtered.length === 1 ? "quiz" : "quizzes"} found
-          </motion.p>
-        )}
+          {/* Subject Filter */}
+          <FilterDropdown 
+            label="Subject" 
+            icon={<LayoutGrid size={16} />} 
+            value={filterSubject} 
+            options={options?.subjects || []} 
+            onChange={setFilterSubject} 
+          />
+
+          {/* Tag Filter */}
+          <FilterDropdown 
+            label="Tags" 
+            icon={<Tag size={16} />} 
+            value={filterTag} 
+            options={options?.badges.map(b => b.label) || []} 
+            onChange={setFilterTag} 
+          />
+        </motion.div>
+
+        {/* Results Info */}
+        <AnimatePresence>
+          {(filterExam || filterSubject || filterLanguage || filterTag || searchQuery) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-center justify-between mb-6 px-1"
+            >
+              <p className="text-xs text-gray-500 font-black uppercase tracking-widest">
+                Showing {filtered.length} {filtered.length === 1 ? "Result" : "Results"}
+              </p>
+              <button 
+                onClick={() => {
+                  setFilterExam("");
+                  setFilterSubject("");
+                  setFilterLanguage("");
+                  setFilterTag("");
+                  setSearchQuery("");
+                }}
+                className="text-[10px] text-purple-400 font-black uppercase tracking-widest hover:text-purple-300 transition-colors"
+              >
+                Clear All
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Quiz Grid */}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent animate-spin shadow-glow-purple" />
           </div>
         ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((quiz, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((quiz: any, i: number) => (
               <motion.div
                 key={quiz.id}
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
               >
                 <QuizCard 
                   quiz={quiz} 
-                  attempts={attempts.filter(a => a.quizId === quiz.id)}
+                  attempts={attempts.filter((a: any) => a.quizId === quiz.id)}
                 />
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 glass rounded-2xl">
-            <p className="text-gray-400">No quizzes found for the selected filters.</p>
-            {(filterExam || filterSubject || searchQuery) && (
-              <button
-                onClick={() => { setFilterExam(""); setFilterSubject(""); setSearchQuery(""); }}
-                className="mt-3 text-purple-400 text-sm hover:underline"
-              >
-                Clear all filters
-              </button>
-            )}
+          <div className="text-center py-20 glass-dark rounded-[2.5rem] border border-white/5">
+            <Filter size={48} className="mx-auto mb-4 text-gray-700" />
+            <h3 className="text-xl font-bold text-white mb-2">No Quizzes Found</h3>
+            <p className="text-gray-500 max-w-xs mx-auto text-sm">We couldn&apos;t find any quizzes matching your current filters. Try adjusting them!</p>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function FilterDropdown({ label, icon, value, options, onChange }: { 
+  label: string, 
+  icon: React.ReactNode, 
+  value: string, 
+  options: string[], 
+  onChange: (val: string) => void 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl border transition-all text-left",
+          value 
+            ? "bg-purple-600/20 border-purple-500/50 text-white" 
+            : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={cn("p-1.5 rounded-lg shrink-0", value ? "bg-purple-500/20" : "bg-white/5")}>
+            {icon}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 leading-none mb-0.5">{label}</span>
+            <span className="text-xs font-bold truncate">{value || "All"}</span>
+          </div>
+        </div>
+        <ChevronDown size={14} className={cn("shrink-0 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ 
+                background: "linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0))",
+                backgroundColor: "rgba(15, 23, 42, 0.85)",
+                boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0,0,0,0.5)"
+              }}
+              className="absolute top-full left-0 right-0 mt-2 z-[90] border border-white/5 rounded-[1.5rem] overflow-hidden backdrop-blur-[40px] saturate-[180%]"
+            >
+              <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                <button 
+                  onClick={() => { onChange(""); setIsOpen(false); }}
+                  className={cn(
+                    "w-full px-4 py-3 text-xs font-bold text-left hover:bg-white/5 transition-colors border-b border-white/5",
+                    value === "" ? "text-purple-400 bg-purple-400/5" : "text-gray-400"
+                  )}
+                >
+                  All {label}s
+                </button>
+                {options.map((opt) => (
+                  <button 
+                    key={opt}
+                    onClick={() => { onChange(opt); setIsOpen(false); }}
+                    className={cn(
+                      "w-full px-4 py-3 text-xs font-bold text-left hover:bg-white/5 transition-colors",
+                      value === opt ? "text-purple-400 bg-purple-400/5" : "text-gray-300"
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

@@ -66,6 +66,7 @@ export interface QuizSet {
   badge?: QuizBadge;      // optional corner ribbon badge
   createdAt?: Timestamp;
   thumbnailUrl?: string;
+  isPublished?: boolean;
 }
 
 export interface Attempt {
