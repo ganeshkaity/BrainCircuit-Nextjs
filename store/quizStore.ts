@@ -11,6 +11,7 @@ interface QuizState {
   marked: string[];
   startedAt: number | null; // epoch ms
   remainingSeconds: number;
+  questionTimes: Record<string, number>;
   isSubmitted: boolean;
 
   // Actions
@@ -44,6 +45,7 @@ export const useQuizStore = create<QuizState>()(
       marked: [],
       startedAt: null,
       remainingSeconds: 0,
+      questionTimes: {},
       isSubmitted: false,
 
       initQuiz: ({ quizId, questions, durationMinutes }) => {
@@ -61,6 +63,7 @@ export const useQuizStore = create<QuizState>()(
           marked: [],
           startedAt: Date.now(),
           remainingSeconds: durationMinutes * 60,
+          questionTimes: {},
           isSubmitted: false,
         });
       },
@@ -103,9 +106,18 @@ export const useQuizStore = create<QuizState>()(
       },
 
       tickTimer: () =>
-        set((s) => ({
-          remainingSeconds: Math.max(0, s.remainingSeconds - 1),
-        })),
+        set((s) => {
+          const currentQId = s.questions[s.currentIndex]?.id;
+          if (!currentQId) return { remainingSeconds: Math.max(0, s.remainingSeconds - 1) };
+          
+          return {
+            remainingSeconds: Math.max(0, s.remainingSeconds - 1),
+            questionTimes: {
+              ...s.questionTimes,
+              [currentQId]: (s.questionTimes[currentQId] || 0) + 1
+            }
+          };
+        }),
 
       submitQuiz: () => set({ isSubmitted: true }),
 
@@ -119,6 +131,7 @@ export const useQuizStore = create<QuizState>()(
           marked: [],
           startedAt: null,
           remainingSeconds: 0,
+          questionTimes: {},
           isSubmitted: false,
         }),
 

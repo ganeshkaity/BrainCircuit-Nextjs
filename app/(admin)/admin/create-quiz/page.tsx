@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { UploadCloud, CheckCircle, FilePlus, Settings } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
 import { createQuizSet, getOnboardingOptions } from "@/lib/firebase/firestore";
+import { useUIStore } from "@/store/uiStore";
 import type { Question } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 
@@ -57,6 +58,7 @@ export default function CreateQuizPage() {
   const [file, setFile] = useState<File | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
+  const { showAlert } = useUIStore();
 
   const { data: options } = useQuery({
     queryKey: ["onboarding-options"],
@@ -129,7 +131,11 @@ export default function CreateQuizPage() {
       const rawJson = XLSX.utils.sheet_to_json(worksheet) as any[];
 
       if (rawJson.length === 0) {
-        alert("Excel file is empty.");
+        showAlert({ 
+          message: "The uploaded Excel file appears to be empty. Please check the file and try again.", 
+          type: "warning", 
+          title: "Empty File" 
+        });
         setLoading(false);
         return;
       }
@@ -186,7 +192,11 @@ export default function CreateQuizPage() {
       setStep(2);
     } catch (e: any) {
       console.error(e);
-      alert(`Error parsing Excel: ${e.message}`);
+      showAlert({ 
+        message: `There was an error parsing the Excel file: ${e.message}. Please ensure you're using the correct template.`, 
+        type: "error", 
+        title: "Parsing Error" 
+      });
     } finally {
       setLoading(false);
     }
@@ -197,9 +207,18 @@ export default function CreateQuizPage() {
   };
 
   const handleCreate = async () => {
-    if (!form.title) return alert("Please enter a title.");
-    if (Number(form.questionCount) > questions.length)
-      return alert(`Question count cannot exceed ${questions.length} (total uploaded).`);
+    if (!form.title) {
+      showAlert({ message: "Please enter a title for the quiz.", type: "warning", title: "Missing Title" });
+      return;
+    }
+    if (Number(form.questionCount) > questions.length) {
+      showAlert({ 
+        message: `The selected question count (${form.questionCount}) cannot exceed the total number of uploaded questions (${questions.length}).`, 
+        type: "warning", 
+        title: "Invalid Count" 
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -220,14 +239,22 @@ export default function CreateQuizPage() {
           ? { badge: options.badges.find(b => b.label === form.badgeLabel) }
           : {}),
       });
-      alert("✅ Quiz created successfully!");
+      showAlert({ 
+        message: "Your quiz has been created and is now available for students.", 
+        type: "success", 
+        title: "Quiz Created" 
+      });
       setStep(1);
       setFile(null);
       setQuestions([]);
       setForm(f => ({ ...f, title: "", description: "" }));
     } catch (e) {
       console.error(e);
-      alert("Failed to create quiz. Check console.");
+      showAlert({ 
+        message: "Failed to create the quiz. Please check the console for technical details.", 
+        type: "error", 
+        title: "Creation Failed" 
+      });
     } finally {
       setLoading(false);
     }

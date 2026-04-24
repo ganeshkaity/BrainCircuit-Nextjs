@@ -4,6 +4,7 @@ import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getQuizSet, updateQuizSet, getOnboardingOptions } from "@/lib/firebase/firestore";
+import { useUIStore } from "@/store/uiStore";
 import Link from "next/link";
 import { ArrowLeft, Save, Edit2, CheckCircle, XCircle } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
@@ -13,6 +14,7 @@ export default function EditQuizPage({ params }: { params: Promise<{ quizId: str
   const router = useRouter();
   const { quizId } = use(params);
   const queryClient = useQueryClient();
+  const { showAlert } = useUIStore();
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempQuestion, setTempQuestion] = useState<Question | null>(null);
@@ -38,7 +40,11 @@ export default function EditQuizPage({ params }: { params: Promise<{ quizId: str
     },
     onError: (err) => {
       console.error(err);
-      alert("Failed to update quiz.");
+      showAlert({ 
+        message: "Failed to update the quiz. Please check your connection and try again.", 
+        type: "error", 
+        title: "Update Failed" 
+      });
     },
   });
 

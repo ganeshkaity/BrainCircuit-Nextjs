@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
+import { useUIStore } from "@/store/uiStore";
 import { saveAttempt, getQuizSet, calculateRank, updateUser } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
 import { formatTime, calculateScore, getPointsForAttempt, cn } from "@/lib/helpers";
-import { ChevronLeft, ChevronRight, Bookmark, Menu, X, Clock, AlertTriangle, Delete } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Bookmark, Menu, X, Clock, AlertTriangle, Delete } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,12 +20,14 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
   const { user, firebaseUid, setUser } = useUserStore();
   
   const store = useQuizStore();
+  const { showAlert } = useUIStore();
   const {
     questions, currentIndex, answers, remainingSeconds, isSubmitted,
     setAnswer, toggleMark, visitQuestion, next, prev, goTo, tickTimer, submitQuiz, getPaletteStatus
   } = store;
 
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Timer
@@ -76,8 +79,11 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
         uid: firebaseUid,
         quizId,
         answers,
+        questionTimes: store.questionTimes,
+        questionIds: questions.map(q => q.id),
         score,
         maxScore: quiz.totalMarks,
+        percentage: parseFloat(((score / quiz.totalMarks) * 100).toFixed(3)),
         timeTaken,
         pointsEarned,
         isFirstAttempt: true,
@@ -91,16 +97,63 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
       // Invalidate attempts cache so the result page fetches the fresh attempt
       await queryClient.invalidateQueries({ queryKey: ["attempts", firebaseUid] });
 
-      // In background or next step, we could calculate rank
-      // For now we'll route to result page
-      router.replace(`/quiz/${quizId}/result`);
+      // Route to result page with the specific attempt ID to avoid race conditions
+      router.replace(`/quiz/${quizId}/result?attemptId=${attemptRef.id}`);
 
     } catch (err) {
       console.error(err);
-      alert("Failed to submit. Please try again.");
+      showAlert({ 
+        message: "Failed to submit. Please try again.",
+        type: "error",
+        title: "Submission Error"
+      });
       setIsSubmitting(false);
     }
   };
+
+  const handleExitAttempt = () => {
+    if (isSubmitted || isSubmitting) return;
+
+    showAlert({
+      title: "Discard Attempt?",
+      message: "Are you sure you want to leave the quiz? Your current progress will be lost.",
+      type: "warning",
+      showCancel: true,
+      confirmText: "Exit Quiz",
+      cancelText: "Continue Test",
+      onConfirm: () => {
+        // Force navigate without the guard
+        router.push(`/quiz/${quizId}`);
+      }
+    });
+  };
+
+  // Navigation guard
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmitted || isSubmitting) return;
+      e.preventDefault();
+      e.returnValue = ""; 
+    };
+
+    if (!isSubmitted) {
+      window.history.pushState(null, "", window.location.href);
+    }
+
+    const handlePopState = () => {
+      if (isSubmitted || isSubmitting) return;
+      window.history.pushState(null, "", window.location.href);
+      handleExitAttempt();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+    
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isSubmitted, isSubmitting, quizId, router, showAlert]);
 
   if (!questions.length) {
     return (
@@ -145,33 +198,55 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
     if (currentStr === "" || currentStr === ".") {
       setAnswer(q.id, []);
     } else {
-      // We parse it to float, but we allow typing "2." by keeping it as string in state?
-      // Wait, answers state is `number[]`. If we parse "2." it becomes `2`. The user won't see the decimal.
-      // So let's store it as any and pass it as string for now if it ends with dot, or just parse float.
-      // Wait, we can't store string if it's strictly number[]. Let's just use `any` casting since JS arrays are flexible.
       setAnswer(q.id, [currentStr as any]);
     }
   };
 
+  const handleSubmitClick = () => {
+    showAlert({
+      message: "Are you sure you want to submit the quiz? You won't be able to change your answers after this.",
+      type: "warning",
+      title: "Submit Quiz?",
+      showCancel: true,
+      confirmText: "Submit Now",
+      cancelText: "Keep Working",
+      onConfirm: handleSubmit
+    });
+  };
+
+  const allAnswered = Object.values(answers).filter(a => a.length > 0).length === questions.length;
+  const isLastQuestion = currentIndex === questions.length - 1;
+
   return (
-    <main className="min-h-dvh flex flex-col bg-gray-950">
+    <main className="h-dvh flex flex-col bg-gray-950 overflow-hidden">
       <Header
-        showBack={false}
-        className="bg-gray-950/80 backdrop-blur-md border-b border-white/5 pb-2 pt-safe"
+        showBack={true}
+        onBack={handleExitAttempt}
+        isQuizMode={true}
+        className="bg-gray-950/80 backdrop-blur-md border-b border-white/5 pb-2 pt-safe relative z-40"
         timerElement={
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-red-400 font-bold tabular-nums">
             <Clock size={16} />
             {formatTime(remainingSeconds)}
           </div>
         }
+        rightElement={
+          <GradientButton
+            onClick={handleSubmitClick}
+            isLoading={isSubmitting}
+            className="px-4 py-1.5 h-auto text-xs md:text-sm md:px-6 md:py-2.5"
+          >
+            Submit
+          </GradientButton>
+        }
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row mt-16 safe-pb pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden pb-20 md:pb-0">
         
         {/* Left: Question Area */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-          <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar pt-4 md:pt-6">
+          <div className="max-w-3xl mx-auto space-y-6 pb-24">
             
             {/* Question Header */}
             <div className="flex items-center justify-between">
@@ -285,10 +360,10 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
         {/* Right: Palette Sidebar (Desktop) / Drawer (Mobile) */}
         {/* Mobile Palette Toggle */}
         <button
-          className="md:hidden fixed bottom-20 right-4 z-40 bg-gray-800 p-3 rounded-full shadow-lg border border-gray-700"
+          className="md:hidden fixed bottom-28 right-4 z-[45] bg-gray-800 p-3.5 rounded-full shadow-2xl border border-white/10 active:scale-90 transition-all shadow-purple-500/20"
           onClick={() => setPaletteOpen(true)}
         >
-          <Menu className="text-white" />
+          <Menu className="text-white" size={24} />
         </button>
 
         <AnimatePresence>
@@ -299,7 +374,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
               exit={{ x: "100%" }}
               transition={{ type: "tween", duration: 0.3 }}
               className={cn(
-                "fixed inset-y-0 right-0 z-50 w-80 bg-gray-900 border-l border-white/10 md:static md:w-80 md:z-0 md:transform-none flex flex-col pt-safe",
+                "fixed inset-y-0 right-0 z-50 w-80 bg-gray-900 border-l border-white/10 md:static md:w-80 md:z-0 md:transform-none flex flex-col h-full",
                 !paletteOpen && "hidden md:flex"
               )}
             >
@@ -310,36 +385,105 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
                 </button>
               </div>
 
-              {/* Palette Grid */}
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {questions.map((qItem, i) => {
-                    const status = getPaletteStatus(qItem.id);
-                    const isActive = i === currentIndex;
-                    return (
-                      <button
-                        key={qItem.id}
-                        onClick={() => goTo(i)}
-                        className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all",
-                          `palette-${status}`,
-                          isActive && "ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110"
-                        )}
-                      >
-                        {i + 1}
-                      </button>
-                    );
-                  })}
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-0">
+                {/* Palette Grid */}
+                <div className="p-4">
+                  <div className="grid grid-cols-5 gap-2">
+                    {questions.map((qItem, i) => {
+                      const status = getPaletteStatus(qItem.id);
+                      const isActive = i === currentIndex;
+                      return (
+                        <button
+                          key={qItem.id}
+                          onClick={() => goTo(i)}
+                          className={cn(
+                            "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all",
+                            `palette-${status}`,
+                            isActive && "ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110"
+                          )}
+                        >
+                          {i + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Legend */}
-              <div className="p-4 border-t border-white/10 bg-gray-900/50 text-xs text-gray-400 space-y-2">
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded palette-unattempted" /> Unattempted</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded palette-skipped" /> Skipped</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded palette-answered" /> Answered</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded palette-marked" /> Marked for Review</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded palette-marked-answered" /> Answered & Marked</div>
+                {/* Legend – Collapsible */}
+                <div className="border-t border-white/10 bg-gray-950/50">
+                  <button 
+                    onClick={() => setLegendOpen(!legendOpen)}
+                    className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-default group"
+                  >
+                    <h4 className="font-bold text-white text-xs uppercase tracking-wider">Colour Code meaning</h4>
+                    <ChevronDown 
+                      size={16} 
+                      className={cn("text-gray-500 transition-transform duration-300", legendOpen && "rotate-180")} 
+                    />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {legendOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-5 pt-1 space-y-2.5 text-xs text-gray-400">
+                          <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded palette-unattempted" /> Unattempted</div>
+                          <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded palette-skipped" /> Skipped</div>
+                          <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded palette-answered" /> Answered</div>
+                          <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded palette-marked" /> Marked for Review</div>
+                          <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded palette-marked-answered" /> Answered & Marked</div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Stats / Details */}
+                <div className="p-4 border-t border-white/10 bg-gray-950">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-white text-sm">Attempt Details</h4>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30 font-bold uppercase tracking-wider">Live Stats</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Attempted", value: Object.values(answers).filter(a => a.length > 0).length, color: "text-green-400", bg: "bg-green-400/5" },
+                      { label: "Not Attempted", value: questions.filter(q => questions.some(vq => vq.id === q.id && store.visited.includes(q.id)) && (!answers[q.id] || answers[q.id].length === 0)).length, color: "text-yellow-400", bg: "bg-yellow-400/5" },
+                      { label: "Not Visited", value: questions.length - store.visited.length, color: "text-gray-500", bg: "bg-gray-500/5" },
+                      { label: "Marked", value: store.marked.filter(id => !answers[id] || answers[id].length === 0).length, color: "text-purple-400", bg: "bg-purple-400/5" },
+                      { label: "Ans & Marked", value: store.marked.filter(id => answers[id] && answers[id].length > 0).length, color: "text-blue-400", bg: "bg-blue-400/5" },
+                      { label: "Avg Time/Q", value: (Object.values(answers).filter(a => a.length > 0).length > 0) 
+                          ? `${Math.round(((questions.length * 0) + (store.startedAt ? (Date.now() - store.startedAt) / 1000 : 0)) / Object.values(answers).filter(a => a.length > 0).length)}s`
+                          : "0s", 
+                        color: "text-white", bg: "bg-white/5" 
+                      },
+                    ].map((stat, i) => (
+                      <div key={i} className={cn("p-2 rounded-xl border border-white/5", stat.bg)}>
+                        <p className="text-[10px] text-gray-500 font-medium uppercase mb-0.5">{stat.label}</p>
+                        <p className={cn("text-lg font-bold font-display", stat.color)}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                    <div className="text-[10px] text-gray-500 font-medium uppercase">Overall Progress</div>
+                    <div className="text-xs font-bold text-white">
+                      {Math.round((Object.values(answers).filter(a => a.length > 0).length / questions.length) * 100)}%
+                    </div>
+                  </div>
+                  <div className="mt-1.5 w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(Object.values(answers).filter(a => a.length > 0).length / questions.length) * 100}%` }}
+                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -347,54 +491,103 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
 
       </div>
 
+      {/* Floating Final Submit Button */}
+      <AnimatePresence>
+        {(allAnswered || isLastQuestion) && !isSubmitted && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-24 left-4 right-4 md:right-[340px] z-30 flex justify-center pointer-events-none"
+          >
+            <button
+              onClick={handleSubmitClick}
+              className="pointer-events-auto flex items-center gap-2 px-10 py-4 rounded-2xl bg-emerald-600 text-white font-bold shadow-[0_0_35px_rgba(5,150,105,0.5)] hover:shadow-[0_0_45px_rgba(5,150,105,0.7)] transition-all hover:scale-105 active:scale-95 border border-emerald-400/30"
+            >
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              Submit Answers
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bottom Control Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 border-t border-white/10 p-3 safe-pb md:right-80">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gray-950 border-t border-white/10 px-4 py-4 md:py-3 md:right-80 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between max-w-3xl mx-auto gap-2">
           
           <div className="flex gap-2">
             <button
+              onClick={() => setAnswer(q.id, [])}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl glass text-red-400 transition-all font-medium border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] active:scale-95"
+            >
+              <Delete size={18} />
+              <span className="text-[11px] sm:text-xs">Clear</span>
+            </button>
+
+            <button
               onClick={() => toggleMark(q.id)}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-default font-medium text-sm",
-                store.marked.includes(q.id) ? "bg-purple-600/30 text-purple-300 border border-purple-500/50" : "glass text-gray-300"
+                "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all font-medium border",
+                store.marked.includes(q.id) 
+                  ? "bg-purple-600/30 text-purple-300 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]" 
+                  : "glass text-purple-400 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
               )}
             >
-              <Bookmark size={16} className={store.marked.includes(q.id) ? "fill-purple-300" : ""} />
-              <span className="hidden sm:inline">{store.marked.includes(q.id) ? "Marked" : "Mark for Review"}</span>
+              <Bookmark size={18} className={store.marked.includes(q.id) ? "fill-purple-300" : ""} />
+              <span className="text-[11px] sm:text-xs">Mark</span>
             </button>
-            
-            <GradientButton
-              onClick={() => {
-                if (window.confirm("Are you sure you want to submit the quiz? You won't be able to change your answers.")) {
-                  handleSubmit();
-                }
-              }}
-              isLoading={isSubmitting}
-              className="px-6"
-            >
-              Submit
-            </GradientButton>
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={prev}
               disabled={currentIndex === 0}
-              className="p-2.5 rounded-xl glass disabled:opacity-30 text-white"
+              className="w-14 h-12 flex items-center justify-center rounded-xl glass disabled:opacity-10 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)] hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all active:scale-95"
             >
-              <ChevronLeft />
+              <ChevronLeft size={24} />
             </button>
             <button
               onClick={next}
               disabled={currentIndex === questions.length - 1}
-              className="p-2.5 rounded-xl glass disabled:opacity-30 text-white"
+              className="w-14 h-12 flex items-center justify-center rounded-xl glass disabled:opacity-10 text-green-400 border border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all active:scale-95"
             >
-              <ChevronRight />
+              <ChevronRight size={24} />
             </button>
           </div>
 
         </div>
       </div>
+
+      {/* Full-screen Loading Overlay during submission */}
+      <AnimatePresence>
+        {isSubmitting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md cursor-wait"
+          >
+            <div className="flex flex-col items-center gap-6 p-8 rounded-3xl glass-dark border border-white/10 shadow-glow-purple max-w-sm w-full text-center">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin" />
+                <img src="/logo.png" className="absolute inset-0 m-auto w-8 h-8 object-contain animate-pulse" alt="Logo" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-white">Calculating Results</h2>
+                <p className="text-sm text-gray-400">Please wait while we secure your attempt and analyze your performance...</p>
+              </div>
+              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

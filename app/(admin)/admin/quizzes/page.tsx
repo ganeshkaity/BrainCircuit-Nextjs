@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUIStore } from "@/store/uiStore";
 import { getQuizSets, deleteQuizSet } from "@/lib/firebase/firestore";
 import Link from "next/link";
 import { Edit3, Trash2, Clock, CheckCircle } from "lucide-react";
@@ -9,6 +10,7 @@ import GradientButton from "@/components/ui/GradientButton";
 
 export default function AdminQuizzesPage() {
   const queryClient = useQueryClient();
+  const { showAlert } = useUIStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: quizzes = [], isLoading } = useQuery({
@@ -24,16 +26,28 @@ export default function AdminQuizzesPage() {
     },
     onError: (err) => {
       console.error(err);
-      alert("Failed to delete quiz.");
+      showAlert({ 
+        message: "Failed to delete quiz. Please check your connection and try again.", 
+        type: "error", 
+        title: "Deletion Failed" 
+      });
       setDeletingId(null);
     },
   });
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) {
-      setDeletingId(id);
-      deleteMutation.mutate(id);
-    }
+    showAlert({
+      message: "Are you sure you want to delete this quiz? This action cannot be undone and all student attempts for this quiz will be permanently affected.",
+      type: "warning",
+      title: "Delete Quiz?",
+      showCancel: true,
+      confirmText: "Yes, Delete",
+      cancelText: "Keep Quiz",
+      onConfirm: () => {
+        setDeletingId(id);
+        deleteMutation.mutate(id);
+      }
+    });
   };
 
   if (isLoading) {

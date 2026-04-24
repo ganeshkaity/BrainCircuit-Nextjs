@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getOnboardingOptions, updateOnboardingOptions } from "@/lib/firebase/firestore";
+import { useUIStore } from "@/store/uiStore";
 import type { OnboardingOptions, QuizBadge } from "@/types";
 import GradientButton from "@/components/ui/GradientButton";
 import { Plus, X, Save } from "lucide-react";
@@ -20,6 +21,7 @@ export default function AdminOptionsPage() {
   const [options, setOptions] = useState<OnboardingOptions | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { showAlert } = useUIStore();
 
   // Badge form state
   const [newBadgeLabel, setNewBadgeLabel] = useState("");
@@ -31,10 +33,22 @@ export default function AdminOptionsPage() {
 
   const handleAdd = (key: keyof Omit<OnboardingOptions, "badges">) => {
     if (!options) return;
-    const val = prompt(`Add new ${key.slice(0, -1)}:`);
-    if (val && !options[key].includes(val)) {
-      setOptions({ ...options, [key]: [...options[key], val] });
-    }
+    
+    const label = key.slice(0, -1); // "exams" -> "exam"
+    
+    showAlert({
+      title: `Add New ${label}`,
+      message: `Enter the name of the new ${label} you want to add to the system.`,
+      showInput: true,
+      placeholder: `e.g., ${key === 'exams' ? 'CUET' : key === 'classes' ? 'Class 10' : 'History'}`,
+      confirmText: "Add Item",
+      showCancel: true,
+      onConfirm: (val) => {
+        if (val && !options[key].includes(val)) {
+          setOptions({ ...options, [key]: [...options[key], val] });
+        }
+      }
+    });
   };
 
   const handleRemove = (key: keyof Omit<OnboardingOptions, "badges">, val: string) => {
@@ -59,10 +73,18 @@ export default function AdminOptionsPage() {
     setSaving(true);
     try {
       await updateOnboardingOptions(options);
-      alert("Options saved successfully!");
+      showAlert({ 
+        message: "Your application options have been updated successfully.", 
+        type: "success", 
+        title: "Saved Successfully" 
+      });
     } catch (e) {
       console.error(e);
-      alert("Failed to save options.");
+      showAlert({ 
+        message: "Failed to save options. Please check the console for details.", 
+        type: "error", 
+        title: "Save Failed" 
+      });
     } finally {
       setSaving(false);
     }

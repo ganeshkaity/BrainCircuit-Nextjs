@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
+import { useUIStore } from "@/store/uiStore";
 import { shuffleArray } from "@/lib/helpers";
 import { motion } from "framer-motion";
 import { use } from "react"; // For unwrap
@@ -35,10 +36,18 @@ export default function QuizDetailPage({
   });
 
   const { initQuiz, quizId: currentQuizId, isSubmitted } = useQuizStore();
+  const { showAlert } = useUIStore();
 
   const handleStart = () => {
     if (!quiz) return;
-    if (!quiz.questions?.length) return alert("Quiz has no questions yet!");
+    if (!quiz.questions?.length) {
+      showAlert({ 
+        message: "This quiz has no questions yet. Please try another one.", 
+        type: "warning",
+        title: "Empty Quiz" 
+      });
+      return;
+    }
 
     // Only reset if it's a new quiz or previous one was submitted
     if (currentQuizId !== quizId || isSubmitted) {
@@ -128,6 +137,29 @@ export default function QuizDetailPage({
             {quiz.title}
           </h1>
           
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <Clock className="text-blue-400 mb-2" size={20} />
+              <p className="text-xs text-gray-400 mb-1">Duration</p>
+              <p className="font-bold text-white">{quiz.durationMinutes} Mins</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <CheckCircle className="text-green-400 mb-2" size={20} />
+              <p className="text-xs text-gray-400 mb-1">Total Marks</p>
+              <p className="font-bold text-white">{quiz.totalMarks}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <BookOpen className="text-orange-400 mb-2" size={20} />
+              <p className="text-xs text-gray-400 mb-1">Questions</p>
+              <p className="font-bold text-white">{quiz.questionCount}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <AlertCircle className="text-red-400 mb-2" size={20} />
+              <p className="text-xs text-gray-400 mb-1">Negative Marking</p>
+              <p className="font-bold text-white">-{quiz.negativeMarks}</p>
+            </div>
+          </div>
+
           {quiz.description && (
             <div className="text-gray-400 text-sm mb-6 leading-relaxed">
               <ReactMarkdown
@@ -159,29 +191,6 @@ export default function QuizDetailPage({
               </ReactMarkdown>
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <Clock className="text-blue-400 mb-2" size={20} />
-              <p className="text-xs text-gray-400 mb-1">Duration</p>
-              <p className="font-bold text-white">{quiz.durationMinutes} Mins</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <CheckCircle className="text-green-400 mb-2" size={20} />
-              <p className="text-xs text-gray-400 mb-1">Total Marks</p>
-              <p className="font-bold text-white">{quiz.totalMarks}</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <BookOpen className="text-orange-400 mb-2" size={20} />
-              <p className="text-xs text-gray-400 mb-1">Questions</p>
-              <p className="font-bold text-white">{quiz.questionCount}</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-              <AlertCircle className="text-red-400 mb-2" size={20} />
-              <p className="text-xs text-gray-400 mb-1">Negative Marking</p>
-              <p className="font-bold text-white">-{quiz.negativeMarks}</p>
-            </div>
-          </div>
 
           {/* Subjects tags */}
           <div className="mb-8">

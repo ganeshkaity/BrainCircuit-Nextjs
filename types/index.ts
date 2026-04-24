@@ -24,6 +24,7 @@ export interface UserProfile {
   level: UserLevel;
   isAdmin?: boolean;
   profileComplete: boolean;
+  nameUpdatedAt?: string; // ISO string to track 1-month limit
   createdAt: Timestamp;
 }
 
@@ -72,8 +73,11 @@ export interface Attempt {
   uid: string;
   quizId: string;
   answers: Record<string, number[]>; // questionId -> selectedOption indices
+  questionTimes?: Record<string, number>; // questionId -> time spent in seconds
+  questionIds?: string[]; // IDs of questions included in this specific attempt
   score: number;
   maxScore: number;
+  percentage?: number; // stored to 3 decimal places e.g. 66.667
   timeTaken: number; // seconds
   rank?: number;
   pointsEarned: number;

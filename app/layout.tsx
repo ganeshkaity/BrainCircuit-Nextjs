@@ -33,6 +33,8 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import AlertModal from "@/components/modals/AlertModal";
+
 export default function RootLayout({
   children,
 }: {
@@ -52,6 +54,7 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
           <CookieConsent />
+          <AlertModal />
         </QueryProvider>
       </body>
     </html>

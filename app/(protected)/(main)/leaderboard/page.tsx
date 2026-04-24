@@ -9,12 +9,12 @@ import { Trophy, Medal, Star } from "lucide-react";
 import { cn } from "@/lib/helpers";
 
 export default function LeaderboardPage() {
-  const { user } = useUserStore();
+  const { user, firebaseUid } = useUserStore();
 
   const { data: leaders = [], isLoading } = useQuery({
     queryKey: ["leaderboard", user?.targetExam],
     queryFn: () => getLeaderboard(user?.targetExam || "NEET"),
-    enabled: !!user,
+    enabled: !!(user || firebaseUid),
   });
 
   return (
@@ -36,7 +36,14 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {leaders.map((leader, index) => {
+            {leaders.length === 0 ? (
+              <div className="glass rounded-2xl p-8 text-center">
+                <Trophy size={32} className="mx-auto mb-3 text-gray-600" />
+                <p className="text-gray-400 text-sm">No participants yet for {user?.targetExam}.</p>
+                <p className="text-gray-600 text-xs mt-1">Be the first to take a quiz!</p>
+              </div>
+            ) : (
+              leaders.map((leader, index) => {
               const isTop3 = index < 3;
               const isMe = leader.uid === user?.uid;
               
@@ -82,7 +89,7 @@ export default function LeaderboardPage() {
                   </div>
                 </motion.div>
               );
-            })}
+            }))}
           </div>
         )}
       </div>

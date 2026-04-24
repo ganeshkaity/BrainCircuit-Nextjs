@@ -5,7 +5,7 @@ import { ArrowLeft, LogOut, User, Search, X, ShieldCheck } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useUserStore } from "@/store/userStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/helpers";
 
@@ -13,22 +13,34 @@ interface HeaderProps {
   title?: string;
   showBack?: boolean;
   timerElement?: React.ReactNode;
+  rightElement?: React.ReactNode;
   className?: string;
   onSearch?: (query: string) => void;
+  onBack?: () => void;
+  isQuizMode?: boolean;
 }
 
 export default function Header({
   title,
   showBack = false,
   timerElement,
+  rightElement,
   className,
   onSearch,
+  onBack,
+  isQuizMode = false,
 }: HeaderProps) {
   const router = useRouter();
   const { user, clearUser } = useUserStore();
+  const [imgError, setImgError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Reset imgError when user changes
+  useEffect(() => {
+    setImgError(false);
+  }, [user?.photoURL]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -47,6 +59,11 @@ export default function Header({
     onSearch?.("");
   };
 
+  const logoClasses = cn(
+    "flex items-center gap-2 select-none shrink-0",
+    !isQuizMode && "cursor-pointer"
+  );
+
   return (
     <header
       className={cn(
@@ -57,31 +74,39 @@ export default function Header({
       {/* Main nav bar */}
       <div className="glass-dark border-b border-white/10 px-4 md:px-8 py-3 flex items-center justify-between gap-3 w-full max-w-screen-2xl mx-auto">
         {/* Left */}
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 overflow-hidden">
           {showBack && (
             <button
-              onClick={() => router.back()}
+              onClick={() => onBack ? onBack() : router.back()}
               className="p-1.5 rounded-xl hover:bg-white/10 text-gray-300 transition-default shrink-0"
               aria-label="Go back"
             >
               <ArrowLeft size={20} />
             </button>
           )}
-          {title ? (
-            <h1 className="font-display font-bold text-lg gradient-text truncate">
-              {title}
-            </h1>
-          ) : (
+          
+          <div className="flex items-center gap-3 overflow-hidden">
             <div
-              onClick={() => router.push("/home")}
-              className="flex items-center gap-2.5 cursor-pointer select-none"
+              onClick={() => !isQuizMode && router.push("/home")}
+              className={logoClasses}
             >
               <img src="/logo.png" alt="Brain Circuit Logo" className="w-8 h-8 object-contain" />
-              <span className="font-display font-bold text-lg sm:text-xl text-white tracking-tight">
-                Brain<span className="text-purple-400">Circuit</span>
-              </span>
+              {!title && !isQuizMode && (
+                <span className="font-display font-bold text-lg text-white tracking-tight hidden sm:block">
+                  Brain<span className="text-purple-400">Circuit</span>
+                </span>
+              )}
             </div>
-          )}
+
+            {title && (
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-px h-4 bg-white/10 shrink-0" />
+                <h1 className="font-display font-bold text-lg gradient-text truncate">
+                  {title}
+                </h1>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Center – timer */}
@@ -89,8 +114,13 @@ export default function Header({
           <div className="flex-shrink-0">{timerElement}</div>
         )}
 
+        {/* Right Element (for custom buttons like Submit in Quiz Mode) */}
+        {rightElement && (
+          <div className="flex-shrink-0">{rightElement}</div>
+        )}
+
         {/* Search icon */}
-        {onSearch && (
+        {onSearch && !isQuizMode && (
           <button
             onClick={() => setSearchOpen((v) => !v)}
             className={cn(
@@ -107,18 +137,12 @@ export default function Header({
 
         {/* Right – avatar menu or login */}
         <div className="relative flex-shrink-0">
-          {user ? (
+          {user && !isQuizMode ? (
             <>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="w-9 h-9 rounded-full bg-gradient-brand-vivid flex items-center justify-center text-white font-bold text-sm ring-2 ring-purple-500/40"
-                aria-label="User menu"
-              >
-                {user?.displayName?.[0]?.toUpperCase() ?? "?"}
-              </button>
+
 
               <AnimatePresence>
-                {menuOpen && (
+                {menuOpen && !isQuizMode && (
                   <motion.div
                     initial={{ opacity: 0, y: -8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -156,7 +180,7 @@ export default function Header({
                 )}
               </AnimatePresence>
             </>
-          ) : (
+          ) : !isQuizMode && (
             <button
               onClick={() => router.push("/login?from=/home")}
               className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-medium transition-colors"

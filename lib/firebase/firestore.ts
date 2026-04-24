@@ -97,26 +97,37 @@ export async function saveAttempt(attempt: Omit<Attempt, "id" | "createdAt">) {
   });
 }
 
+export async function getAttempt(id: string): Promise<Attempt | null> {
+  const snap = await getDoc(doc(db, "attempts", id));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Attempt) : null;
+}
+
 export async function getUserAttempts(uid: string): Promise<Attempt[]> {
   const q = query(
     collection(db, "attempts"),
     where("uid", "==", uid),
-    orderBy("createdAt", "desc"),
-    limit(20)
+    limit(50)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Attempt));
+  const attempts = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Attempt));
+  // Sort client-side to avoid needing a Firestore composite index
+  return attempts.sort((a, b) => {
+    const tA = a.createdAt && "toMillis" in a.createdAt ? (a.createdAt as any).toMillis() : (a.createdAt as any)?.seconds * 1000 || 0;
+    const tB = b.createdAt && "toMillis" in b.createdAt ? (b.createdAt as any).toMillis() : (b.createdAt as any)?.seconds * 1000 || 0;
+    return tB - tA;
+  });
 }
 
 export async function getLeaderboard(exam: string, limitN = 50) {
   const q = query(
     collection(db, "users"),
     where("targetExam", "==", exam),
-    orderBy("points", "desc"),
     limit(limitN)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as UserProfile));
+  const users = snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as UserProfile));
+  // Sort client-side to avoid composite index requirement
+  return users.sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
 }
 
 // ──────────────────────────────────────────────

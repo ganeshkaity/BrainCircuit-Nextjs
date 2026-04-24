@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
+import { useUIStore } from "@/store/uiStore";
 import { updateUser, getUser, getOnboardingOptions } from "@/lib/firebase/firestore";
 import GradientButton from "@/components/ui/GradientButton";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import { motion } from "framer-motion";
 export default function CompleteProfilePage() {
   const router = useRouter();
   const { user, setUser, firebaseUid } = useUserStore();
+  const { showAlert } = useUIStore();
   const [loading, setLoading] = useState(false);
   
   const { data: options, isLoading: loadingOptions } = useQuery({
@@ -44,7 +46,14 @@ export default function CompleteProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firebaseUid) return;
-    if (!form.dob) return alert("Please enter your date of birth.");
+    if (!form.dob) {
+      showAlert({ 
+        message: "Please enter your date of birth to continue.", 
+        type: "warning", 
+        title: "Missing Information" 
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -60,7 +69,11 @@ export default function CompleteProfilePage() {
       router.push("/home");
     } catch (error) {
       console.error(error);
-      alert("Failed to update profile. Please try again.");
+      showAlert({ 
+        message: "Failed to update profile. Please check your connection and try again.", 
+        type: "error", 
+        title: "Update Failed" 
+      });
     } finally {
       setLoading(false);
     }
