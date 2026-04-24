@@ -10,7 +10,7 @@ import Header from "@/components/layout/Header";
 import GradientButton from "@/components/ui/GradientButton";
 import { Trophy, Clock, Target, ArrowRight, BarChart2 } from "lucide-react";
 import { formatTime, cn } from "@/lib/helpers";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ResultPage({ params }: { params: Promise<{ quizId: string }> }) {
   const router = useRouter();
@@ -109,12 +109,40 @@ export default function ResultPage({ params }: { params: Promise<{ quizId: strin
 
   const avgTimePerQ = Math.round(attempt.timeTaken / Math.max(attemptQuestions.length, 1));
   
+  const correctCount = attemptQuestions.filter(q => {
+    const userAns = attempt.answers[q.id] || [];
+    const isAttempted = userAns.length > 0;
+    const userAnsStr = [...userAns].sort().join(",");
+    const correctAnsStr = [...q.correctOptions].sort().join(",");
+    return isAttempted && userAnsStr === correctAnsStr;
+  }).length;
+
+  const attemptedCount = Object.keys(attempt.answers).length;
+  const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
+  const isFullMarks = attempt.score === quiz.totalMarks;
+
+  let circleGradient = "from-purple-500 to-blue-500";
+  let ringColor = "border-gray-900";
+  let glowColor = "shadow-glow";
+
+  if (isFullMarks) {
+    circleGradient = "from-yellow-400 via-amber-500 to-orange-500";
+    ringColor = "border-yellow-500/50";
+    glowColor = "shadow-[0_0_30px_rgba(234,179,8,0.4)]";
+  } else if (percentage >= 80) {
+    circleGradient = "from-green-400 to-emerald-600";
+    ringColor = "border-green-500/30";
+  } else if (percentage < 40) {
+    circleGradient = "from-red-500 to-rose-700";
+    ringColor = "border-red-500/30";
+  }
+  
   // Comparison logic
   const scoreDiff = previousAttempt ? attempt.score - previousAttempt.score : null;
   const timeDiff = previousAttempt ? previousAttempt.timeTaken - attempt.timeTaken : null;
 
   return (
-    <main className="min-h-dvh pb-10 pt-16 bg-gray-950">
+    <main className="min-h-dvh pb-10 pt-16">
       <Header title="Quiz Result" />
 
       <div className="max-w-xl mx-auto px-5 mt-6 space-y-6">
@@ -126,8 +154,27 @@ export default function ResultPage({ params }: { params: Promise<{ quizId: strin
         >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-600/20 blur-[60px] rounded-full pointer-events-none" />
           
-          <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center mb-6 shadow-glow border-4 border-gray-900 z-10 relative">
-            <span className="text-3xl font-black text-white">{percentage}%</span>
+          <div className="relative inline-block mb-6">
+            <AnimatePresence>
+              {isFullMarks && (
+                <motion.div
+                  initial={{ y: 10, opacity: 0, rotate: -10 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+                >
+                  <img src="https://img.icons8.com/color/96/crown.png" alt="Crown" className="w-16 h-16 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className={cn(
+              "w-24 h-24 rounded-full flex items-center justify-center border-4 z-10 relative transition-all duration-700",
+              `bg-gradient-to-tr ${circleGradient}`,
+              ringColor,
+              glowColor
+            )}>
+              <span className="text-3xl font-black text-white">{percentage}%</span>
+            </div>
           </div>
 
           <h1 className="text-4xl font-black text-white mb-1">
@@ -135,16 +182,21 @@ export default function ResultPage({ params }: { params: Promise<{ quizId: strin
           </h1>
           <p className="text-purple-400 font-bold tracking-wide uppercase text-xs mb-8">Performance Summary</p>
 
-          <div className="grid grid-cols-2 gap-4 text-left">
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-              <Trophy className="text-yellow-400 mb-2" size={18} />
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Current Rank</p>
-              <p className="font-black text-white text-xl font-display">{rank ? `#${rank}` : "-"}</p>
+          <div className="grid grid-cols-3 gap-3 text-left">
+            <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+              <Trophy className="text-yellow-400 mb-2" size={16} />
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Rank</p>
+              <p className="font-black text-white text-base font-display">{rank ? `#${rank}` : "-"}</p>
             </div>
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-              <Clock className="text-blue-400 mb-2" size={18} />
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Total Time</p>
-              <p className="font-black text-white text-xl font-display">{formatTime(attempt.timeTaken)}</p>
+            <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+              <Target className="text-orange-400 mb-2" size={16} />
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Accuracy</p>
+              <p className="font-black text-white text-base font-display">{accuracy}%</p>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+              <Clock className="text-blue-400 mb-2" size={16} />
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Time</p>
+              <p className="font-black text-white text-base font-display">{formatTime(attempt.timeTaken)}</p>
             </div>
           </div>
 

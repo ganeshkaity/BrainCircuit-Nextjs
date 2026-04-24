@@ -1,19 +1,43 @@
 "use client";
 
-import Link from "next/link";
-import { Clock, CheckCircle, HelpCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Clock, CheckCircle, HelpCircle, ArrowRight, Loader2, Activity } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import StatChip from "@/components/ui/StatChip";
-import type { QuizSet } from "@/types";
+import type { QuizSet, Attempt } from "@/types";
+import { formatTime } from "@/lib/helpers";
 
 interface QuizCardProps {
   quiz: QuizSet;
+  attempts?: Attempt[];
 }
 
-export default function QuizCard({ quiz }: QuizCardProps) {
+export default function QuizCard({ quiz, attempts = [] }: QuizCardProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+    setIsLoading(true);
+    // Add a tiny delay to ensure the UI updates before the main thread blocks on navigation
+    setTimeout(() => {
+      router.push(`/quiz/${quiz.id}`);
+    }, 50);
+  };
+
   return (
-    <Link href={`/quiz/${quiz.id}`} className="block h-full">
+    <div onClick={handleClick} className="block h-full cursor-pointer group">
       <GlassCard hover className="h-full flex flex-col relative pt-8">
+        {/* Top Right Action Icon */}
+        <div className="absolute top-4 right-4 text-gray-500 group-hover:text-purple-400 transition-colors">
+          {isLoading ? (
+            <Loader2 size={18} className="animate-spin text-purple-400" />
+          ) : (
+            <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
+          )}
+        </div>
         {/* Left Edge Banner Badge - Overlapping Top Border */}
         {quiz.badge && (
           <div className="absolute -top-1 -left-2 z-20 drop-shadow-md">
@@ -76,7 +100,43 @@ export default function QuizCard({ quiz }: QuizCardProps) {
             className="flex-1 justify-center px-0.5 py-1 text-[10px]"
           />
         </div>
+
+        {/* User Attempt Details */}
+        <div className="mt-3 pt-3 border-t border-white/5 bg-gradient-to-r from-blue-500/5 to-purple-500/5 -mx-5 -mb-5 px-5 pb-5 pt-3 rounded-b-2xl">
+          {attempts.length > 0 ? (() => {
+            const avgScore = Math.round(attempts.reduce((acc, a) => acc + a.score, 0) / attempts.length);
+            const avgTime = Math.round(attempts.reduce((acc, a) => acc + a.timeTaken, 0) / attempts.length);
+            const highScore = Math.max(...attempts.map(a => a.score));
+            
+            return (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 text-blue-300">
+                  <Activity size={12} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Attempted: {attempts.length}x</span>
+                </div>
+                <div className="flex justify-between items-center text-right">
+                  <div>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase text-left">High Score</p>
+                    <p className="text-xs font-black text-green-400 text-left">{highScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase text-center">Avg Score</p>
+                    <p className="text-xs font-black text-white text-center">{avgScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase">Avg Time</p>
+                    <p className="text-xs font-black text-white">{formatTime(avgTime)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
+            <div className="flex items-center justify-center py-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500/80">Not Attempted till now</span>
+            </div>
+          )}
+        </div>
       </GlassCard>
-    </Link>
+    </div>
   );
 }

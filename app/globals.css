@@ -25,7 +25,10 @@ html {
 }
 
 body {
-  @apply bg-gradient-dark text-white antialiased;
+  @apply text-white antialiased;
+  background-color: #030712; /* Fallback (gray-950 roughly) */
+  background-image: radial-gradient(circle at 50% 0%, #0c152d 0%, #02040a 100%);
+  background-attachment: fixed;
   font-family: "Inter", system-ui, sans-serif;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -62,6 +65,17 @@ body {
 ::-webkit-scrollbar-thumb {
   background: rgba(147, 51, 234, 0.8);
   border-radius: 10px;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* ── Palette colors ──────────────────────────── */

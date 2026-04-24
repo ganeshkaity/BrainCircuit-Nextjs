@@ -4,15 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { getQuizSet, getUserAttempts } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
+import BottomNav from "@/components/layout/BottomNav";
 import GradientButton from "@/components/ui/GradientButton";
 import { useRouter } from "next/navigation";
-import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight } from "lucide-react";
+import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight, Loader2 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
 import { useUIStore } from "@/store/uiStore";
 import { shuffleArray } from "@/lib/helpers";
 import { motion } from "framer-motion";
-import { use } from "react"; // For unwrap
+import { use, useState } from "react"; // For unwrap
 
 export default function QuizDetailPage({
   params,
@@ -37,9 +38,10 @@ export default function QuizDetailPage({
 
   const { initQuiz, quizId: currentQuizId, isSubmitted } = useQuizStore();
   const { showAlert } = useUIStore();
+  const [isStarting, setIsStarting] = useState(false);
 
   const handleStart = () => {
-    if (!quiz) return;
+    if (!quiz || isStarting) return;
     if (!quiz.questions?.length) {
       showAlert({ 
         message: "This quiz has no questions yet. Please try another one.", 
@@ -48,6 +50,8 @@ export default function QuizDetailPage({
       });
       return;
     }
+
+    setIsStarting(true);
 
     // Only reset if it's a new quiz or previous one was submitted
     if (currentQuizId !== quizId || isSubmitted) {
@@ -89,7 +93,11 @@ export default function QuizDetailPage({
       
       initQuiz({ quizId, questions: picked, durationMinutes: quiz.durationMinutes });
     }
-    router.push(`/quiz/${quizId}/attempt`);
+    
+    // Tiny delay to ensure React state updates before blocking navigation
+    setTimeout(() => {
+      router.push(`/quiz/${quizId}/attempt`);
+    }, 50);
   };
 
   if (isLoading) {
@@ -112,7 +120,7 @@ export default function QuizDetailPage({
   const isResume = currentQuizId === quizId && !isSubmitted;
 
   return (
-    <main className="min-h-dvh pb-10 pt-16">
+    <main className="min-h-dvh pb-24 pt-16">
       <Header showBack />
 
       <div className="max-w-xl mx-auto px-5 mt-6">
@@ -204,11 +212,20 @@ export default function QuizDetailPage({
             </div>
           </div>
 
-          <GradientButton size="lg" fullWidth onClick={handleStart}>
-            {isResume ? "Resume Quiz" : "Start Quiz"} <ChevronRight size={18} />
+          <GradientButton size="lg" fullWidth onClick={handleStart} disabled={isStarting}>
+            {isStarting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Starting...
+              </>
+            ) : (
+              <>
+                {isResume ? "Resume Quiz" : "Start Quiz"} <ChevronRight size={18} />
+              </>
+            )}
           </GradientButton>
         </motion.div>
       </div>
+      <BottomNav />
     </main>
   );
 }

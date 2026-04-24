@@ -88,7 +88,7 @@ export default function AnalysisPage({ params }: { params: Promise<{ quizId: str
   ];
 
   return (
-    <main className="min-h-dvh pb-16 pt-16 bg-gray-950">
+    <main className="min-h-dvh pb-16 pt-16">
       <Header showBack title="Detailed Analysis" />
 
       <div className="max-w-3xl mx-auto px-4 mt-6 space-y-5">
@@ -113,13 +113,13 @@ export default function AnalysisPage({ params }: { params: Promise<{ quizId: str
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+        <div className="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/10 overflow-x-auto no-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
               className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5",
+                "flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap min-w-fit",
                 activeFilter === tab.key
                   ? "bg-gray-800 text-white shadow-md"
                   : "text-gray-500 hover:text-gray-300"

@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
   const fillPoints = `${points} ${width},${height} 0,${height}`;
 
   return (
-    <div className="min-h-screen bg-gradient-dark pb-24">
+    <div className="min-h-screen pb-24">
       <Header title="Analytics" />
       
       <motion.div 

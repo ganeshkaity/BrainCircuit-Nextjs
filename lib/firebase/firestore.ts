@@ -180,3 +180,37 @@ export async function getOnboardingOptions(): Promise<OnboardingOptions> {
 export async function updateOnboardingOptions(data: OnboardingOptions) {
   await setDoc(doc(db, "app_config", "onboarding_options"), data);
 }
+
+// ──────────────────────────────────────────────
+// QUESTION REPORTS
+// ──────────────────────────────────────────────
+export async function reportQuestion(data: {
+  quizId: string;
+  questionId: string;
+  userId: string;
+  reason: string;
+  createdAt: number;
+}) {
+  const reportsRef = collection(db, "question_reports");
+  await addDoc(reportsRef, { ...data, status: "pending" });
+}
+
+export async function updateReportStatus(reportId: string, status: "edited" | "rejected") {
+  await updateDoc(doc(db, "question_reports", reportId), { status });
+}
+
+export async function getQuestionReports() {
+  const reportsRef = collection(db, "question_reports");
+  const q = query(reportsRef, orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getUserReports(userId: string) {
+  const reportsRef = collection(db, "question_reports");
+  const q = query(reportsRef, where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+}

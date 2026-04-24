@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Header from "@/components/layout/Header";
-import { FilePlus, LayoutDashboard, Users, List, Settings } from "lucide-react";
+import { FilePlus, LayoutDashboard, Users, List, Settings, Flag } from "lucide-react";
 import { cn } from "@/lib/helpers";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/admin/quizzes", label: "Manage Quizzes", icon: List },
   { href: "/admin/create-quiz", label: "Create Quiz", icon: FilePlus },
   { href: "/admin/manage-users", label: "Users", icon: Users },
+  { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/options", label: "App Options", icon: Settings },
 ];
 
@@ -60,12 +61,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={href}
                 href={href}
                 className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-default",
-                  isActive ? "text-purple-400" : "text-gray-400"
+                  "flex flex-col items-center justify-center p-3 rounded-2xl transition-default",
+                  isActive ? "text-purple-400 bg-purple-500/10" : "text-gray-400"
                 )}
               >
-                <Icon size={20} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <Icon size={22} />
               </Link>
             );
           })}

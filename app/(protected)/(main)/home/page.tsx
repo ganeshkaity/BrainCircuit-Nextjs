@@ -2,17 +2,23 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getQuizSets, getOnboardingOptions } from "@/lib/firebase/firestore";
+import { getQuizSets, getOnboardingOptions, getUserAttempts } from "@/lib/firebase/firestore";
 import { useUserStore } from "@/store/userStore";
 import Header from "@/components/layout/Header";
 import QuizCard from "@/components/cards/QuizCard";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
-  const { user } = useUserStore();
+  const { user, firebaseUid } = useUserStore();
   const [filterExam, setFilterExam] = useState(user?.targetExam || "");
   const [filterSubject, setFilterSubject] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: attempts = [] } = useQuery({
+    queryKey: ["attempts", firebaseUid],
+    queryFn: () => getUserAttempts(firebaseUid!),
+    enabled: !!firebaseUid,
+  });
 
   const { data: quizzes = [], isLoading: isLoadingQuizzes } = useQuery({
     queryKey: ["quizzes"],
@@ -45,7 +51,7 @@ export default function HomePage() {
     <main className="min-h-dvh pb-24 pt-16">
       <Header onSearch={setSearchQuery} />
 
-      <div className="px-5 max-w-4xl mx-auto mt-4">
+      <div className="px-5 max-w-7xl mx-auto mt-4">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -137,7 +143,10 @@ export default function HomePage() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <QuizCard quiz={quiz} />
+                <QuizCard 
+                  quiz={quiz} 
+                  attempts={attempts.filter(a => a.quizId === quiz.id)}
+                />
               </motion.div>
             ))}
           </div>

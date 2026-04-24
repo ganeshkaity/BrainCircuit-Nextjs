@@ -92,3 +92,13 @@ export interface OnboardingOptions {
   subjects: string[];
   badges: QuizBadge[];
 }
+
+export interface QuestionReport {
+  id: string;
+  quizId: string;
+  questionId: string;
+  userId: string;
+  reason: string;
+  status: "pending" | "edited" | "rejected";
+  createdAt: number;
+}

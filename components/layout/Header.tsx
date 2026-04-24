@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, User, Search, X, ShieldCheck } from "lucide-react";
+import { ArrowLeft, LogOut, User, Search, X, ShieldCheck, History, Flag } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useUserStore } from "@/store/userStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/helpers";
 
@@ -36,6 +36,20 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   // Reset imgError when user changes
   useEffect(() => {
@@ -91,8 +105,11 @@ export default function Header({
               className={logoClasses}
             >
               <img src="/logo.png" alt="Brain Circuit Logo" className="w-8 h-8 object-contain" />
-              {!title && !isQuizMode && (
-                <span className="font-display font-bold text-lg text-white tracking-tight hidden sm:block">
+              {!isQuizMode && (
+                <span className={cn(
+                  "font-display font-bold text-white tracking-tight shrink-0",
+                  title ? "hidden sm:inline-block text-sm opacity-80" : "text-base sm:text-lg inline-block"
+                )}>
                   Brain<span className="text-purple-400">Circuit</span>
                 </span>
               )}
@@ -136,10 +153,26 @@ export default function Header({
         )}
 
         {/* Right – avatar menu or login */}
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0" ref={menuRef}>
           {user && !isQuizMode ? (
             <>
-
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 hover:border-purple-500/50 transition-all focus:ring-2 focus:ring-purple-500/50"
+              >
+                {user.photoURL && !imgError ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-purple-600 to-blue-600 flex items-center justify-center text-sm font-bold text-white">
+                    {user.displayName?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
+              </button>
 
               <AnimatePresence>
                 {menuOpen && !isQuizMode && (
@@ -169,6 +202,18 @@ export default function Header({
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default"
                     >
                       <User size={15} /> Profile
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); router.push("/recent-tests"); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default"
+                    >
+                      <History size={15} /> Recent Tests
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); router.push("/reports"); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default border-b border-white/5"
+                    >
+                      <Flag size={15} /> My Reports
                     </button>
                     <button
                       onClick={handleLogout}

@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
 import { useUIStore } from "@/store/uiStore";
-import { saveAttempt, getQuizSet, calculateRank, updateUser } from "@/lib/firebase/firestore";
+import { saveAttempt, getQuizSet, calculateRank, updateUser, reportQuestion } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
 import { formatTime, calculateScore, getPointsForAttempt, cn } from "@/lib/helpers";
 import { ChevronLeft, ChevronRight, ChevronDown, Bookmark, Menu, X, Clock, AlertTriangle, Delete } from "lucide-react";
@@ -29,6 +29,39 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Report State
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
+
+  const handleReportSubmit = async () => {
+    const finalReason = reportReason === "Other" ? customReason.trim() : reportReason;
+    if (!finalReason) {
+      showAlert({ message: "Please select or type a reason.", type: "warning", title: "Error" });
+      return;
+    }
+    
+    setIsReporting(true);
+    try {
+      await reportQuestion({
+        quizId,
+        questionId: questions[currentIndex].id,
+        userId: firebaseUid || "anonymous",
+        reason: finalReason,
+        createdAt: Date.now(),
+      });
+      showAlert({ message: "Question reported successfully. Thank you!", type: "success", title: "Reported" });
+      setIsReportModalOpen(false);
+      setReportReason("");
+      setCustomReason("");
+    } catch (e) {
+      showAlert({ message: "Failed to report. Try again.", type: "error", title: "Error" });
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   // Timer
   useEffect(() => {
@@ -218,7 +251,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
   const isLastQuestion = currentIndex === questions.length - 1;
 
   return (
-    <main className="h-dvh flex flex-col bg-gray-950 overflow-hidden">
+    <main className="h-dvh flex flex-col overflow-hidden">
       <Header
         showBack={true}
         onBack={handleExitAttempt}
@@ -253,7 +286,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
               <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">
                 Question {currentIndex + 1} <span className="text-gray-600 font-normal">of {questions.length}</span>
               </span>
-              <div className="flex gap-2 text-xs">
+              <div className="flex gap-2 text-xs items-center">
                 <span className="bg-white/5 px-2 py-1 rounded text-gray-300">{q.subject}</span>
                 <span className={cn(
                   "px-2 py-1 rounded",
@@ -263,6 +296,13 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
                 )}>
                   {q.difficulty}
                 </span>
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="p-1 rounded text-red-500/80 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Report Question"
+                >
+                  <AlertTriangle size={16} />
+                </button>
               </div>
             </div>
 
@@ -585,6 +625,69 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
                 />
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Report Modal */}
+      <AnimatePresence>
+        {isReportModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-md p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm glass-md border border-white/10 rounded-3xl p-6"
+            >
+              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <AlertTriangle className="text-red-500" /> Report Question
+              </h2>
+              <div className="space-y-3 mb-6">
+                {["Incorrect Answer", "Typo / Grammar", "Image Missing/Unclear", "Other"].map(reason => (
+                  <button
+                    key={reason}
+                    onClick={() => setReportReason(reason)}
+                    className={cn(
+                      "w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors",
+                      reportReason === reason 
+                        ? "bg-purple-500/20 border-purple-500 text-white" 
+                        : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
+                    )}
+                  >
+                    {reason}
+                  </button>
+                ))}
+
+                {reportReason === "Other" && (
+                  <textarea
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="Please specify..."
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-purple-500 min-h-[80px]"
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsReportModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <GradientButton
+                  onClick={handleReportSubmit}
+                  isLoading={isReporting}
+                  className="flex-1 h-auto py-3 text-sm font-medium"
+                >
+                  Submit
+                </GradientButton>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

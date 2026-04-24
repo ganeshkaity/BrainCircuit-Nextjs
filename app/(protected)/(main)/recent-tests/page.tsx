@@ -86,7 +86,7 @@ export default function RecentTestsPage() {
   }, [enrichedAttempts, search, subjectFilter, examFilter, marksFilter]);
 
   return (
-    <main className="min-h-dvh pb-24 pt-16 bg-gray-950">
+    <main className="min-h-dvh pb-24 pt-16">
       <Header title="All Recent Tests" showBack onBack={() => router.back()} />
       
       <div className="px-5 max-w-xl mx-auto mt-6">
