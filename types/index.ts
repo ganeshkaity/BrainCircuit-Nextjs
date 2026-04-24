@@ -43,6 +43,11 @@ export interface Question {
   createdAt?: Timestamp;
 }
 
+export interface QuizBadge {
+  label: string;   // e.g. "Hot !", "Hard", "Easy"
+  color: string;   // Tailwind gradient or hex, e.g. "from-orange-500 to-red-500"
+}
+
 export interface QuizSet {
   id: string;
   title: string;
@@ -57,6 +62,7 @@ export interface QuizSet {
   negativeMarks: number;
   durationMinutes: number;
   marksPerQuestion: number;
+  badge?: QuizBadge;      // optional corner ribbon badge
   createdAt?: Timestamp;
   thumbnailUrl?: string;
 }
@@ -80,4 +86,5 @@ export interface OnboardingOptions {
   languages: string[];
   classes: string[];
   subjects: string[];
+  badges: QuizBadge[];
 }

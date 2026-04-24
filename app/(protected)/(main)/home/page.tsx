@@ -31,9 +31,9 @@ export default function HomePage() {
 
   const filtered = quizzes.filter((q) => {
     const matchExam = !filterExam || q.exam === filterExam;
-    const matchSubject =
-      !filterSubject ||
-      (q.subjects && q.subjects.includes(filterSubject));
+    const matchSubject = searchQuery 
+      ? true // Ignore subject sub-filter when searching
+      : (!filterSubject || (q.subjects && q.subjects.includes(filterSubject)));
     const matchSearch =
       !searchQuery ||
       q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,7 +70,7 @@ export default function HomePage() {
         </motion.div>
 
         {/* Exam Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-2">
           {examOptions.map((exam) => {
             const val = exam === "All" ? "" : exam;
             const active = filterExam === val;
@@ -78,10 +78,10 @@ export default function HomePage() {
               <button
                 key={exam}
                 onClick={() => setFilterExam(val)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-default border ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-default border backdrop-blur-md ${
                   active
-                    ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/40"
-                    : "glass text-gray-300 border-transparent hover:bg-white/10"
+                    ? "bg-purple-600/80 border-purple-400 text-white shadow-lg shadow-purple-900/40"
+                    : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:border-white/20"
                 }`}
               >
                 {exam}
@@ -91,7 +91,7 @@ export default function HomePage() {
         </div>
 
         {/* Subject Sub-filters */}
-        <div className="flex gap-2 overflow-x-auto pb-4 pt-2 scrollbar-none mb-4">
+        <div className="flex gap-2 overflow-x-auto pb-4 pt-2 mb-4">
           {subjectOptions.map((subject) => {
             const val = subject === "All" ? "" : subject;
             const active = filterSubject === val;
@@ -102,7 +102,7 @@ export default function HomePage() {
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-default border ${
                   active
                     ? "bg-blue-600/80 border-blue-500 text-white"
-                    : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-gray-200"
+                    : "bg-white/10 text-gray-400 border-white/10 hover:bg-white/20 hover:text-gray-200"
                 }`}
               >
                 {subject}

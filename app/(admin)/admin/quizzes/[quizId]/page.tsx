@@ -3,7 +3,7 @@
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getQuizSet, updateQuizSet } from "@/lib/firebase/firestore";
+import { getQuizSet, updateQuizSet, getOnboardingOptions } from "@/lib/firebase/firestore";
 import Link from "next/link";
 import { ArrowLeft, Save, Edit2, CheckCircle, XCircle } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
@@ -21,6 +21,11 @@ export default function EditQuizPage({ params }: { params: Promise<{ quizId: str
   const { data: quiz, isLoading } = useQuery({
     queryKey: ["admin-quiz", quizId],
     queryFn: () => getQuizSet(quizId),
+  });
+
+  const { data: options } = useQuery({
+    queryKey: ["onboarding-options"],
+    queryFn: getOnboardingOptions,
   });
 
   const updateMutation = useMutation({
@@ -106,6 +111,7 @@ export default function EditQuizPage({ params }: { params: Promise<{ quizId: str
               marksPerQuestion: quiz.marksPerQuestion,
               negativeMarks: quiz.negativeMarks,
               questionCount: quiz.questionCount,
+              badge: quiz.badge,
             })}
             className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-gray-300 transition-colors flex items-center justify-center gap-2"
           >
@@ -157,6 +163,29 @@ export default function EditQuizPage({ params }: { params: Promise<{ quizId: str
                 <option value="English">English</option>
                 <option value="Hindi">Hindi</option>
                 <option value="Bengali">Bengali</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Corner Badge</label>
+              <select 
+                value={editingSettings.badge?.label || ""} 
+                onChange={e => {
+                  const label = e.target.value;
+                  if (!label) {
+                    const newSettings = { ...editingSettings };
+                    delete newSettings.badge;
+                    setEditingSettings(newSettings);
+                  } else {
+                    const found = options?.badges?.find(b => b.label === label);
+                    setEditingSettings({...editingSettings, badge: found});
+                  }
+                }} 
+                className="w-full bg-black/30 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:border-purple-500"
+              >
+                <option value="">None</option>
+                {(options?.badges || []).map(b => (
+                  <option key={b.label} value={b.label}>{b.label}</option>
+                ))}
               </select>
             </div>
             <div>

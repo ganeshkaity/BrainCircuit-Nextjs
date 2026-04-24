@@ -150,6 +150,13 @@ export async function getOnboardingOptions(): Promise<OnboardingOptions> {
     languages: ["English", "Hindi"],
     classes: ["11", "12", "Dropper"],
     subjects: ["Physics", "Chemistry", "Mathematics", "Biology", "G.K"],
+    badges: [
+      { label: "Hot !", color: "from-orange-500 to-red-500" },
+      { label: "New",  color: "from-blue-500 to-cyan-400" },
+      { label: "Easy", color: "from-green-500 to-emerald-400" },
+      { label: "Hard", color: "from-red-600 to-pink-500" },
+      { label: "Popular", color: "from-purple-500 to-violet-400" },
+    ],
   };
   const snap = await getDoc(doc(db, "app_config", "onboarding_options"));
   if (snap.exists()) {

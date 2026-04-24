@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, User, Search, X } from "lucide-react";
+import { ArrowLeft, LogOut, User, Search, X, ShieldCheck } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useUserStore } from "@/store/userStore";
@@ -77,7 +77,7 @@ export default function Header({
               className="flex items-center gap-2.5 cursor-pointer select-none"
             >
               <img src="/logo.png" alt="Brain Circuit Logo" className="w-8 h-8 object-contain" />
-              <span className="font-display font-bold text-xl text-white hidden sm:block tracking-tight">
+              <span className="font-display font-bold text-lg sm:text-xl text-white tracking-tight">
                 Brain<span className="text-purple-400">Circuit</span>
               </span>
             </div>
@@ -124,7 +124,7 @@ export default function Header({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-12 w-48 glass-md rounded-2xl overflow-hidden shadow-glass-lg border border-white/20"
+                    className="absolute right-0 top-12 w-56 bg-gray-950/95 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl border border-white/10 ring-1 ring-white/5"
                   >
                     <div className="p-3 border-b border-white/10">
                       <p className="text-sm font-semibold text-white truncate">
@@ -132,6 +132,14 @@ export default function Header({
                       </p>
                       <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                     </div>
+                    {user?.isAdmin && (
+                      <button
+                        onClick={() => { setMenuOpen(false); window.open("/admin", "_blank"); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-purple-400 hover:bg-purple-500/10 transition-default font-semibold"
+                      >
+                        <ShieldCheck size={15} /> Admin Panel
+                      </button>
+                    )}
                     <button
                       onClick={() => { setMenuOpen(false); router.push("/profile"); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default"

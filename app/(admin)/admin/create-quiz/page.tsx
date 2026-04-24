@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { UploadCloud, CheckCircle, FilePlus, Settings } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
-import { createQuizSet } from "@/lib/firebase/firestore";
+import { createQuizSet, getOnboardingOptions } from "@/lib/firebase/firestore";
 import type { Question } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -57,18 +58,37 @@ export default function CreateQuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
 
+  const { data: options } = useQuery({
+    queryKey: ["onboarding-options"],
+    queryFn: getOnboardingOptions,
+  });
+
   const [form, setForm] = useState({
     title: "",
     description: "",
-    exam: "NEET",
-    subject: "Physics",
-    language: "English",
-    classLevel: "12",
+    exam: "",
+    subject: "",
+    language: "",
+    classLevel: "",
     durationMinutes: 60,
     marksPerQuestion: 4,
     negativeMarks: 1,
     questionCount: 50,
+    badgeLabel: "", // Optional badge
   });
+
+  // Initialize form defaults when options load
+  useEffect(() => {
+    if (options && !form.exam) {
+      setForm(f => ({
+        ...f,
+        exam: options.exams[0] || "",
+        subject: options.subjects[0] || "",
+        language: options.languages[0] || "",
+        classLevel: options.classes[0] || "",
+      }));
+    }
+  }, [options, form.exam]);
 
   const [loading, setLoading] = useState(false);
 
@@ -196,6 +216,9 @@ export default function CreateQuizPage() {
         negativeMarks: Number(form.negativeMarks),
         durationMinutes: Number(form.durationMinutes),
         marksPerQuestion: Number(form.marksPerQuestion),
+        ...(form.badgeLabel && options?.badges?.find(b => b.label === form.badgeLabel)
+          ? { badge: options.badges.find(b => b.label === form.badgeLabel) }
+          : {}),
       });
       alert("✅ Quiz created successfully!");
       setStep(1);
@@ -266,6 +289,14 @@ export default function CreateQuizPage() {
   }
 
   // ── Step 2: Configure ───────────────────────────────────────────────────────
+  if (!options) {
+    return (
+      <div className="flex justify-center items-center h-[60vh]">
+        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-10 pb-24 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-8">
@@ -294,29 +325,23 @@ export default function CreateQuizPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Exam" name="exam" value={form.exam} onChange={handleChange} options={[
-                { value: "NEET", label: "NEET" },
-                { value: "JEE Mains", label: "JEE Mains" },
-                { value: "JEE Advanced", label: "JEE Advanced" },
-              ]} />
-              <SelectField label="Class" name="classLevel" value={form.classLevel} onChange={handleChange} options={[
-                { value: "11", label: "Class 11" },
-                { value: "12", label: "Class 12" },
-                { value: "Dropper", label: "Dropper" },
-              ]} />
+              <SelectField label="Exam" name="exam" value={form.exam} onChange={handleChange} options={options.exams.map(e => ({ value: e, label: e }))} />
+              <SelectField label="Class" name="classLevel" value={form.classLevel} onChange={handleChange} options={options.classes.map(c => ({ value: c, label: `Class ${c}` }))} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Subject" name="subject" value={form.subject} onChange={handleChange} options={[
-                { value: "Physics", label: "Physics" },
-                { value: "Chemistry", label: "Chemistry" },
-                { value: "Biology", label: "Biology" },
-                { value: "Maths", label: "Maths" },
-              ]} />
-              <SelectField label="Language" name="language" value={form.language} onChange={handleChange} options={[
-                { value: "English", label: "English" },
-                { value: "Hindi", label: "Hindi" },
-              ]} />
+              <SelectField label="Subject" name="subject" value={form.subject} onChange={handleChange} options={options.subjects.map(s => ({ value: s, label: s }))} />
+              <SelectField label="Language" name="language" value={form.language} onChange={handleChange} options={options.languages.map(l => ({ value: l, label: l }))} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <SelectField 
+                label="Corner Badge (Optional)" 
+                name="badgeLabel" 
+                value={form.badgeLabel} 
+                onChange={handleChange} 
+                options={[{ value: "", label: "None" }, ...(options.badges || []).map(b => ({ value: b.label, label: b.label }))]} 
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-3">
