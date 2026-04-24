@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { createUser, getUser } from "@/lib/firebase/firestore";
-import { Brain, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
 import { motion } from "framer-motion";
 import { z } from "zod";
@@ -102,8 +102,8 @@ export default function SignupPage() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-brand-vivid flex items-center justify-center shadow-glow mb-4">
-            <Brain size={32} className="text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+            <img src="/images/big_logo_full.png" alt="Logo" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="font-display font-black text-3xl gradient-text">Brain Circuit</h1>
           <p className="text-gray-400 text-sm mt-1">Start your journey to the top!</p>

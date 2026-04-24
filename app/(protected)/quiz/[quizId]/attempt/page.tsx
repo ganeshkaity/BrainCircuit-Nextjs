@@ -619,7 +619,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
             <div className="flex flex-col items-center gap-6 p-8 rounded-3xl glass-dark border border-white/10 shadow-glow-purple max-w-sm w-full text-center">
               <div className="relative">
                 <div className="w-16 h-16 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin" />
-                <img src="/logo.png" className="absolute inset-0 m-auto w-8 h-8 object-contain animate-pulse" alt="Logo" />
+                <img src="/images/only_logo.png" className="absolute inset-0 m-auto w-8 h-8 object-contain animate-pulse" alt="Logo" />
               </div>
               <div className="space-y-2">
                 <h2 className="text-xl font-bold text-white">Calculating Results</h2>

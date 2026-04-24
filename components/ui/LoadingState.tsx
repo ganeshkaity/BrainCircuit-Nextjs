@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, BrainCircuit } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 
 const FACTS = [
   "Your brain has about 86 billion neurons working together.",
@@ -89,9 +89,9 @@ export default function LoadingState({ message = "Loading your experience..." }:
             repeat: Infinity, 
             ease: "easeInOut" 
           }}
-          className="relative z-10 w-20 h-20 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.3)] border border-white/20"
+          className="relative z-10 w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.2)] border border-white/20"
         >
-          <BrainCircuit className="text-white w-10 h-10" />
+          <img src="/images/only_logo.png" alt="Brain Circuit" className="w-14 h-14 object-contain" />
           
           {/* Inner Glow */}
           <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-white/10 to-transparent pointer-events-none" />

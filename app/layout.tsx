@@ -13,6 +13,10 @@ export const metadata: Metadata = {
     "Practice NEET & JEE with realistic mock tests, instant analytics, and live leaderboards. Crack your exam with Brain Circuit.",
   keywords: ["NEET", "JEE", "exam prep", "quiz", "mock test", "Brain Circuit"],
   manifest: "/manifest.json",
+  icons: {
+    icon: "/images/only_logo.png",
+    apple: "/images/only_logo_bg.jpg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

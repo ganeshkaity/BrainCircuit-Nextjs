@@ -104,7 +104,7 @@ export default function Header({
               onClick={() => !isQuizMode && router.push("/home")}
               className={logoClasses}
             >
-              <img src="/logo.png" alt="Brain Circuit Logo" className="w-8 h-8 object-contain" />
+              <img src="/images/only_logo.png" alt="Brain Circuit Logo" className="w-8 h-8 object-contain" />
               {!isQuizMode && (
                 <span className={cn(
                   "font-display font-bold text-white tracking-tight shrink-0",

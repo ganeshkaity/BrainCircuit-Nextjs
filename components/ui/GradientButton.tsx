@@ -37,7 +37,7 @@ export default function GradientButton({
   return (
     <motion.button
       className={cn(
-        "font-semibold transition-all duration-200 flex items-center justify-center gap-2 select-none",
+        "font-semibold transition-all duration-200 flex items-center justify-center gap-2 select-none whitespace-nowrap",
         variantStyles[variant],
         sizeStyles[size],
         fullWidth && "w-full",
@@ -50,7 +50,7 @@ export default function GradientButton({
       {...props}
     >
       {isLoading ? (
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 whitespace-nowrap">
           <svg
             className="animate-spin h-4 w-4"
             fill="none"
