@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
-import { updateUser, getUser } from "@/lib/firebase/firestore";
+import { updateUser, getUser, getOnboardingOptions } from "@/lib/firebase/firestore";
 import GradientButton from "@/components/ui/GradientButton";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 
 export default function CompleteProfilePage() {
@@ -12,12 +13,29 @@ export default function CompleteProfilePage() {
   const { user, setUser, firebaseUid } = useUserStore();
   const [loading, setLoading] = useState(false);
   
+  const { data: options, isLoading: loadingOptions } = useQuery({
+    queryKey: ["onboarding-options"],
+    queryFn: getOnboardingOptions,
+  });
+
   const [form, setForm] = useState({
-    language: "English" as "English" | "Hindi",
-    classLevel: "12" as "11" | "12" | "Dropper",
-    targetExam: "NEET" as "NEET" | "JEE Mains" | "JEE Advanced",
+    language: "",
+    classLevel: "",
+    targetExam: "",
     dob: "",
   });
+
+  // Set defaults once options are loaded
+  useEffect(() => {
+    if (options && !form.language) {
+      setForm((f) => ({
+        ...f,
+        language: options.languages[0] || "",
+        classLevel: options.classes[0] || "",
+        targetExam: options.exams[0] || "",
+      }));
+    }
+  }, [options]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -48,7 +66,13 @@ export default function CompleteProfilePage() {
     }
   };
 
-  if (!firebaseUid) return null; // let middleware or auth provider handle
+  if (!firebaseUid || loadingOptions) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-dvh flex items-center justify-center px-5 py-10">
@@ -69,9 +93,9 @@ export default function CompleteProfilePage() {
               onChange={handleChange}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none"
             >
-              <option value="NEET" className="bg-gray-900">NEET</option>
-              <option value="JEE Mains" className="bg-gray-900">JEE Mains</option>
-              <option value="JEE Advanced" className="bg-gray-900">JEE Advanced</option>
+              {options?.exams.map((exam) => (
+                <option key={exam} value={exam} className="bg-gray-900">{exam}</option>
+              ))}
             </select>
           </div>
 
@@ -83,9 +107,9 @@ export default function CompleteProfilePage() {
               onChange={handleChange}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none"
             >
-              <option value="11" className="bg-gray-900">Class 11</option>
-              <option value="12" className="bg-gray-900">Class 12</option>
-              <option value="Dropper" className="bg-gray-900">Dropper</option>
+              {options?.classes.map((cls) => (
+                <option key={cls} value={cls} className="bg-gray-900">{cls}</option>
+              ))}
             </select>
           </div>
 
@@ -97,8 +121,9 @@ export default function CompleteProfilePage() {
               onChange={handleChange}
               className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 outline-none"
             >
-              <option value="English" className="bg-gray-900">English</option>
-              <option value="Hindi" className="bg-gray-900">Hindi</option>
+              {options?.languages.map((lang) => (
+                <option key={lang} value={lang} className="bg-gray-900">{lang}</option>
+              ))}
             </select>
           </div>
 

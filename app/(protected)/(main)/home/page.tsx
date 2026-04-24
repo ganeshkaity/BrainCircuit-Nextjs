@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getQuizSets } from "@/lib/firebase/firestore";
+import { getQuizSets, getOnboardingOptions } from "@/lib/firebase/firestore";
 import { useUserStore } from "@/store/userStore";
 import Header from "@/components/layout/Header";
 import QuizCard from "@/components/cards/QuizCard";
@@ -11,26 +11,46 @@ import { motion } from "framer-motion";
 export default function HomePage() {
   const { user } = useUserStore();
   const [filterExam, setFilterExam] = useState(user?.targetExam || "");
+  const [filterSubject, setFilterSubject] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: quizzes = [], isLoading } = useQuery({
+  const { data: quizzes = [], isLoading: isLoadingQuizzes } = useQuery({
     queryKey: ["quizzes"],
     queryFn: () => getQuizSets(),
   });
 
-  const filtered = quizzes.filter(
-    (q) => !filterExam || q.exam === filterExam
-  );
+  const { data: options } = useQuery({
+    queryKey: ["onboarding-options"],
+    queryFn: getOnboardingOptions,
+  });
+
+  const isLoading = isLoadingQuizzes || !options;
+
+  const examOptions = options ? ["All", ...options.exams] : ["All"];
+  const subjectOptions = options ? ["All", ...options.subjects] : ["All"];
+
+  const filtered = quizzes.filter((q) => {
+    const matchExam = !filterExam || q.exam === filterExam;
+    const matchSubject =
+      !filterSubject ||
+      (q.subjects && q.subjects.includes(filterSubject));
+    const matchSearch =
+      !searchQuery ||
+      q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (q.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+    return matchExam && matchSubject && matchSearch;
+  });
 
   return (
     <main className="min-h-dvh pb-24 pt-16">
-      <Header />
-      
+      <Header onSearch={setSearchQuery} />
+
       <div className="px-5 max-w-4xl mx-auto mt-4">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-6"
         >
           {user ? (
             <>
@@ -49,9 +69,9 @@ export default function HomePage() {
           )}
         </motion.div>
 
-        {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none mb-4">
-          {["All", "NEET", "JEE Mains", "JEE Advanced"].map((exam) => {
+        {/* Exam Filters */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {examOptions.map((exam) => {
             const val = exam === "All" ? "" : exam;
             const active = filterExam === val;
             return (
@@ -60,7 +80,7 @@ export default function HomePage() {
                 onClick={() => setFilterExam(val)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-default border ${
                   active
-                    ? "bg-purple-600 border-purple-500 text-white"
+                    ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/40"
                     : "glass text-gray-300 border-transparent hover:bg-white/10"
                 }`}
               >
@@ -69,6 +89,39 @@ export default function HomePage() {
             );
           })}
         </div>
+
+        {/* Subject Sub-filters */}
+        <div className="flex gap-2 overflow-x-auto pb-4 pt-2 scrollbar-none mb-4">
+          {subjectOptions.map((subject) => {
+            const val = subject === "All" ? "" : subject;
+            const active = filterSubject === val;
+            return (
+              <button
+                key={subject}
+                onClick={() => setFilterSubject(val)}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-default border ${
+                  active
+                    ? "bg-blue-600/80 border-blue-500 text-white"
+                    : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-gray-200"
+                }`}
+              >
+                {subject}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active search indicator */}
+        {searchQuery && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-sm text-gray-400 mb-4"
+          >
+            Results for <span className="text-white font-medium">&quot;{searchQuery}&quot;</span>
+            &nbsp;— {filtered.length} {filtered.length === 1 ? "quiz" : "quizzes"} found
+          </motion.p>
+        )}
 
         {/* Quiz Grid */}
         {isLoading ? (
@@ -90,7 +143,15 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="text-center py-12 glass rounded-2xl">
-            <p className="text-gray-400">No quizzes available for this category yet.</p>
+            <p className="text-gray-400">No quizzes found for the selected filters.</p>
+            {(filterExam || filterSubject || searchQuery) && (
+              <button
+                onClick={() => { setFilterExam(""); setFilterSubject(""); setSearchQuery(""); }}
+                className="mt-3 text-purple-400 text-sm hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
       </div>

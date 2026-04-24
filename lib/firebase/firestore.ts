@@ -16,7 +16,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "./config";
-import type { UserProfile, QuizSet, Question, Attempt } from "@/types";
+import type { UserProfile, QuizSet, Question, Attempt, OnboardingOptions } from "@/types";
 
 // ──────────────────────────────────────────────
 // USERS
@@ -139,4 +139,26 @@ export async function calculateRank(params: {
       (a.score === params.score && a.timeTaken < params.timeTaken)
   );
   return better.length + 1;
+}
+
+// ──────────────────────────────────────────────
+// APP CONFIG / OPTIONS
+// ──────────────────────────────────────────────
+export async function getOnboardingOptions(): Promise<OnboardingOptions> {
+  const defaults: OnboardingOptions = {
+    exams: ["NEET", "JEE Mains", "JEE Advanced"],
+    languages: ["English", "Hindi"],
+    classes: ["11", "12", "Dropper"],
+    subjects: ["Physics", "Chemistry", "Mathematics", "Biology", "G.K"],
+  };
+  const snap = await getDoc(doc(db, "app_config", "onboarding_options"));
+  if (snap.exists()) {
+    // Merge with defaults so any newly added fields are always present
+    return { ...defaults, ...snap.data() } as OnboardingOptions;
+  }
+  return defaults;
+}
+
+export async function updateOnboardingOptions(data: OnboardingOptions) {
+  await setDoc(doc(db, "app_config", "onboarding_options"), data);
 }

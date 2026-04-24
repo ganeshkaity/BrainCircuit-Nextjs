@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, User, Settings } from "lucide-react";
+import { ArrowLeft, LogOut, User, Search, X } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useUserStore } from "@/store/userStore";
@@ -12,9 +12,9 @@ import { cn } from "@/lib/helpers";
 interface HeaderProps {
   title?: string;
   showBack?: boolean;
-  showTimer?: boolean;
   timerElement?: React.ReactNode;
   className?: string;
+  onSearch?: (query: string) => void;
 }
 
 export default function Header({
@@ -22,15 +22,29 @@ export default function Header({
   showBack = false,
   timerElement,
   className,
+  onSearch,
 }: HeaderProps) {
   const router = useRouter();
   const { user, clearUser } = useUserStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     await signOut(auth);
     clearUser();
     router.push("/login");
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    onSearch?.(val);
+  };
+
+  const handleCloseSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    onSearch?.("");
   };
 
   return (
@@ -40,6 +54,7 @@ export default function Header({
         className
       )}
     >
+      {/* Main nav bar */}
       <div className="glass-dark border-b border-white/10 px-4 md:px-8 py-3 flex items-center justify-between gap-3 w-full max-w-screen-2xl mx-auto">
         {/* Left */}
         <div className="flex items-center gap-3 flex-1">
@@ -57,7 +72,7 @@ export default function Header({
               {title}
             </h1>
           ) : (
-            <div 
+            <div
               onClick={() => router.push("/home")}
               className="flex items-center gap-2.5 cursor-pointer select-none"
             >
@@ -72,6 +87,22 @@ export default function Header({
         {/* Center – timer */}
         {timerElement && (
           <div className="flex-shrink-0">{timerElement}</div>
+        )}
+
+        {/* Search icon */}
+        {onSearch && (
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            className={cn(
+              "p-2 rounded-xl transition-default shrink-0",
+              searchOpen
+                ? "bg-purple-600/30 text-purple-300"
+                : "hover:bg-white/10 text-gray-300"
+            )}
+            aria-label="Search"
+          >
+            {searchOpen ? <X size={20} /> : <Search size={20} />}
+          </button>
         )}
 
         {/* Right – avatar menu or login */}
@@ -127,6 +158,46 @@ export default function Header({
           )}
         </div>
       </div>
+
+      {/* Floating search bar – slides down below the nav */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            key="search-pill"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: "spring", stiffness: 320, damping: 30 }}
+            className="px-4 py-2.5 bg-gray-950 border-b border-white/10"
+          >
+            <div className="flex items-center max-w-screen-2xl mx-auto">
+              <div
+                tabIndex={-1}
+                className="flex items-center w-full rounded-2xl bg-gray-800/80 border border-purple-500/50 px-4 py-2.5 gap-3 shadow-xl shadow-purple-950/40 outline-none"
+              >
+                <Search size={17} className="text-purple-400 shrink-0" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search quizzes by name or topic..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="flex-1 bg-transparent text-white placeholder-gray-500 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:shadow-none"
+                  style={{ outline: "none", boxShadow: "none" }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearchChange("")}
+                    className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-all shrink-0"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

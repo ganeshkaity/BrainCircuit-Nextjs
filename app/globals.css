@@ -9,6 +9,16 @@
   box-sizing: border-box;
 }
 
+/* Remove default browser focus ring from all inputs */
+input, textarea, select, button {
+  outline: none !important;
+  box-shadow: none;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;

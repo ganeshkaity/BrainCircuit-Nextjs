@@ -4,9 +4,9 @@
 
 import { Timestamp } from "firebase/firestore";
 
-export type Exam = "NEET" | "JEE Mains" | "JEE Advanced";
-export type Language = "English" | "Hindi";
-export type ClassLevel = "11" | "12" | "Dropper";
+export type Exam = string; // e.g., "NEET" | "JEE Mains" | "JEE Advanced"
+export type Language = string; // e.g., "English" | "Hindi"
+export type ClassLevel = string; // e.g., "11" | "12" | "Dropper"
 export type QuestionType = "single" | "multi" | "integer";
 export type PaletteStatus = "unattempted" | "answered" | "skipped" | "marked" | "marked-answered";
 export type UserLevel = "Rookie" | "Scholar" | "Expert" | "Master" | "Legend";
@@ -73,4 +73,11 @@ export interface Attempt {
   pointsEarned: number;
   isFirstAttempt: boolean;
   createdAt?: Timestamp;
+}
+
+export interface OnboardingOptions {
+  exams: string[];
+  languages: string[];
+  classes: string[];
+  subjects: string[];
 }
