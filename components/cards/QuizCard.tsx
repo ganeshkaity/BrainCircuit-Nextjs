@@ -6,7 +6,7 @@ import { Clock, CheckCircle, HelpCircle, ArrowRight, Loader2, Activity } from "l
 import GlassCard from "@/components/ui/GlassCard";
 import StatChip from "@/components/ui/StatChip";
 import type { QuizSet, Attempt } from "@/types";
-import { formatTime } from "@/lib/helpers";
+import { formatTime, stripMarkdown } from "@/lib/helpers";
 
 interface QuizCardProps {
   quiz: QuizSet;
@@ -91,7 +91,7 @@ export default function QuizCard({ quiz, attempts = [] }: QuizCardProps) {
 
         {quiz.description && (
           <p className="text-gray-400 text-xs mb-4 line-clamp-2">
-            {quiz.description}
+            {stripMarkdown(quiz.description)}
           </p>
         )}
 

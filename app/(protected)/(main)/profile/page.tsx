@@ -216,12 +216,19 @@ export default function ProfilePage() {
           <LogOut size={18} /> Log Out
         </button>
 
-        <div className="flex flex-col items-center gap-1 opacity-20 mt-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+        <div className="flex flex-col items-center gap-1 opacity-25 mt-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white mb-0.5">
             Brain Circuit
           </p>
-          <p className="text-[9px] font-bold text-purple-400">
-            v 1.0.0
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-purple-500/50" />
+            <p className="text-[9px] font-bold text-purple-400">
+              v 1.0.4.7
+            </p>
+            <span className="w-1 h-1 rounded-full bg-purple-500/50" />
+          </div>
+          <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">
+            Build by Ganesh
           </p>
         </div>
       </div>

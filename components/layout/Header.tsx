@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, User, Search, X, ShieldCheck, History, Flag } from "lucide-react";
+import { ArrowLeft, LogOut, User, Search, X, ShieldCheck, History, Flag, Trophy } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useUserStore } from "@/store/userStore";
@@ -202,6 +202,12 @@ export default function Header({
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default"
                     >
                       <User size={15} /> Profile
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); router.push("/leaderboard"); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 transition-default"
+                    >
+                      <Trophy size={15} /> Leaderboard
                     </button>
                     <button
                       onClick={() => { setMenuOpen(false); router.push("/recent-tests"); }}

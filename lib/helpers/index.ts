@@ -65,3 +65,17 @@ export function getPointsForAttempt(params: {
   if (!isFirstAttempt) return Math.round(base / 3);
   return base;
 }
+
+export function stripMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/^#+\s+/gm, "") // Headers
+    .replace(/\*\*(.*?)\*\*/g, "$1") // Bold
+    .replace(/\*(.*?)\*/g, "$1") // Italic
+    .replace(/__(.*?)__/g, "$1") // Bold
+    .replace(/_(.*?)_/g, "$1") // Italic
+    .replace(/`{1,3}(.*?)`{1,3}/g, "$1") // Code
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1") // Links
+    .replace(/[#*`_~]/g, "") // Catch-all for stray symbols
+    .trim();
+}

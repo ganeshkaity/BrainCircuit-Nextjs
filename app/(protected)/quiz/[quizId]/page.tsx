@@ -108,7 +108,7 @@ export default function QuizDetailPage({
   if (!quiz) {
     return (
       <main className="min-h-dvh flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-xl font-bold text-white mb-2">Quiz not found</h1>
+        <h1 className="text-xl font-bold text-white mb-2">Test not found</h1>
         <GradientButton onClick={() => router.push("/home")}>Go Home</GradientButton>
       </main>
     );
@@ -120,7 +120,7 @@ export default function QuizDetailPage({
   
     return (
       <main className="min-h-dvh pb-24 pt-16">
-        <Header showBack onBack={() => router.push("/home")} />
+        <Header showBack onBack={() => router.replace("/home")} />
   
         <div className="max-w-xl mx-auto px-5 mt-6">
         <motion.div
@@ -131,13 +131,22 @@ export default function QuizDetailPage({
           {/* Background decoration */}
           <div className="absolute -top-20 -right-20 w-48 h-48 bg-purple-600/20 blur-3xl rounded-full" />
           
-          <div className="flex gap-2 mb-4">
-            <span className="bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
               {quiz.exam}
             </span>
-            <span className="bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+            <span className="bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
               Class {quiz.classLevel}
             </span>
+            <span className="bg-teal-500/20 border border-teal-500/40 text-teal-300 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+              {quiz.language}
+            </span>
+            
+            {quiz.badge && (
+              <span className={`ml-auto bg-gradient-to-r ${quiz.badge.color} text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em] shadow-lg`}>
+                {quiz.badge.label}
+              </span>
+            )}
           </div>
 
           <h1 className="font-display font-black text-2xl md:text-3xl text-white mb-3 leading-tight">
@@ -275,7 +284,7 @@ export default function QuizDetailPage({
               </>
             ) : (
               <>
-                {isResume ? "Resume Quiz" : (hasAttempted ? "Retake Quiz" : "Start Quiz")} <ChevronRight size={18} />
+                {isResume ? "Resume Test" : (hasAttempted ? "Retake Test" : "Start Test")} <ChevronRight size={18} />
               </>
             )}
           </GradientButton>

@@ -163,8 +163,12 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
       confirmText: "Exit Quiz",
       cancelText: "Continue Test",
       onConfirm: () => {
-        // Force navigate without the guard
-        router.push(`/quiz/${quizId}`);
+        // Go back twice to clear the 'trapped' state AND the original attempt state
+        window.history.go(-2);
+        // Small delay to let history stabilize, then ensure we are on the details page
+        setTimeout(() => {
+          router.replace(`/quiz/${quizId}`);
+        }, 50);
       }
     });
   };
@@ -183,8 +187,12 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
 
     const handlePopState = () => {
       if (isSubmitted || isSubmitting) return;
-      window.history.pushState(null, "", window.location.href);
+      
+      // Show the exit confirmation modal
       handleExitAttempt();
+      
+      // Re-push state to maintain the 'trap' while the modal is open
+      window.history.pushState(null, "", window.location.href);
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -202,7 +210,7 @@ export default function QuizEnginePage({ params }: { params: Promise<{ quizId: s
         <Header title="Quiz" showBack onBack={() => router.push("/home")} />
         <div>
           <p className="text-gray-400 mb-4">Quiz session not found or expired.</p>
-          <GradientButton onClick={() => router.push(`/quiz/${quizId}`)}>Go Back</GradientButton>
+          <GradientButton onClick={() => router.replace(`/quiz/${quizId}`)}>Go Back</GradientButton>
         </div>
       </main>
     );

@@ -28,21 +28,21 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/images/only_logo_bg.jpg",
+      "src": "/images/big_logo_white.png",
       "sizes": "144x144",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/images/only_logo_bg.jpg",
+      "src": "/images/big_logo_white.png",
       "sizes": "152x152",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/images/only_logo_bg.jpg",
+      "src": "/images/big_logo_white.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
@@ -65,9 +65,36 @@
       "type": "image/png",
       "form_factor": "wide",
       "label": "Brain Circuit Desktop Dashboard"
+    },{
+      "src": "/screenshot-wide1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Brain Circuit Desktop Dashboard"
     },
     {
       "src": "/screenshot-mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Brain Circuit Mobile Experience"
+    },
+    {
+      "src": "/screenshot-mobile2.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Brain Circuit Mobile Experience"
+    },
+    {
+      "src": "/screenshot-mobile3.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Brain Circuit Mobile Experience"
+    },
+    {
+      "src": "/screenshot-mobile4.png",
       "sizes": "720x1280",
       "type": "image/png",
       "form_factor": "narrow",
