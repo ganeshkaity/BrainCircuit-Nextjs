@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/quizzes", label: "Manage Quizzes", icon: List },
   { href: "/admin/create-quiz", label: "Create Quiz", icon: FilePlus },
+  { href: "/admin/test-groups", label: "Test Groups", icon: LayoutDashboard },
   { href: "/admin/manage-users", label: "Users", icon: Users },
   { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/options", label: "App Options", icon: Settings },

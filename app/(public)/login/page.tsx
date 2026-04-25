@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,11 +25,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   
   // Force redirect to signup as per user request
-  useState(() => {
-    if (typeof window !== "undefined") {
-      router.replace("/signup");
-    }
-  });
+  useEffect(() => {
+    router.replace("/signup");
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));

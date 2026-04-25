@@ -60,7 +60,15 @@ export default function RecentTestsPage() {
 
   const uniqueExams = useMemo(() => {
     const exams = new Set<string>();
-    enrichedAttempts.forEach(a => { if (a.quiz?.exam) exams.add(a.quiz.exam); });
+    enrichedAttempts.forEach(a => { 
+      if (a.quiz?.exam) {
+        if (Array.isArray(a.quiz.exam)) {
+          a.quiz.exam.forEach(e => exams.add(e));
+        } else {
+          exams.add(a.quiz.exam);
+        }
+      } 
+    });
     return ["All", ...Array.from(exams)];
   }, [enrichedAttempts]);
 
@@ -74,7 +82,13 @@ export default function RecentTestsPage() {
       if (subjectFilter !== "All" && !a.quiz?.subjects.includes(subjectFilter)) return false;
       
       // 3. Exam Filter
-      if (examFilter !== "All" && a.quiz?.exam !== examFilter) return false;
+      if (examFilter !== "All") {
+        if (Array.isArray(a.quiz?.exam)) {
+          if (!a.quiz.exam.includes(examFilter)) return false;
+        } else {
+          if (a.quiz?.exam !== examFilter) return false;
+        }
+      }
       
       // 4. Marks Filter
       if (marksFilter !== "All") {

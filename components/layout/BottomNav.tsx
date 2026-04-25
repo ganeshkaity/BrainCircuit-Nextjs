@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Trophy, User, BarChart2 } from "lucide-react";
+import { Home, Trophy, User, BarChart2, LayoutList } from "lucide-react";
 import { cn } from "@/lib/helpers";
 import { motion } from "framer-motion";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/tests", label: "Tests", icon: LayoutList },
   { href: "/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/profile", label: "Profile", icon: User },
 ];

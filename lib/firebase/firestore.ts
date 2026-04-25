@@ -16,7 +16,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "./config";
-import type { UserProfile, QuizSet, Question, Attempt, OnboardingOptions } from "@/types";
+import type { UserProfile, QuizSet, Question, Attempt, OnboardingOptions, TestGroup } from "@/types";
 
 // ──────────────────────────────────────────────
 // USERS
@@ -38,6 +38,19 @@ export async function createUser(uid: string, data: Partial<UserProfile>) {
 
 export async function updateUser(uid: string, data: Partial<UserProfile>) {
   await updateDoc(doc(db, "users", uid), data);
+}
+
+export async function toggleSavedQuiz(uid: string, quizId: string, currentSaved: string[] = []): Promise<string[]> {
+  const isSaved = currentSaved.includes(quizId);
+  const newSaved = isSaved 
+    ? currentSaved.filter(id => id !== quizId)
+    : [...currentSaved, quizId];
+    
+  await updateDoc(doc(db, "users", uid), {
+    savedQuizzes: newSaved
+  });
+  
+  return newSaved;
 }
 
 // ──────────────────────────────────────────────
@@ -85,6 +98,30 @@ export async function updateQuizSet(id: string, data: Partial<QuizSet>) {
 
 export async function deleteQuizSet(id: string) {
   return deleteDoc(doc(db, "quiz_sets", id));
+}
+
+// ──────────────────────────────────────────────
+// TEST GROUPS (CATEGORIES)
+// ──────────────────────────────────────────────
+export async function getTestGroups(): Promise<TestGroup[]> {
+  const q = query(collection(db, "test_groups"), orderBy("order", "asc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TestGroup));
+}
+
+export async function createTestGroup(data: Omit<TestGroup, "id" | "createdAt">) {
+  return addDoc(collection(db, "test_groups"), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateTestGroup(id: string, data: Partial<TestGroup>) {
+  return updateDoc(doc(db, "test_groups", id), data);
+}
+
+export async function deleteTestGroup(id: string) {
+  return deleteDoc(doc(db, "test_groups", id));
 }
 
 // ──────────────────────────────────────────────

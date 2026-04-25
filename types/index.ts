@@ -25,6 +25,7 @@ export interface UserProfile {
   isAdmin?: boolean;
   profileComplete: boolean;
   nameUpdatedAt?: string; // ISO string to track 1-month limit
+  savedQuizzes?: string[]; // Array of quiz IDs
   personalRecommendations?: boolean;
   createdAt: Timestamp;
 }
@@ -40,7 +41,7 @@ export interface Question {
   chapter: string;
   difficulty: "easy" | "medium" | "hard";
   type: QuestionType;
-  exam: Exam;
+  exam: Exam | Exam[];
   language: Language;
   createdAt?: Timestamp;
 }
@@ -54,7 +55,7 @@ export interface QuizSet {
   id: string;
   title: string;
   description?: string;
-  exam: Exam;
+  exam: Exam | Exam[];
   language: Language;
   classLevel: ClassLevel;
   subjects: string[];
@@ -104,4 +105,13 @@ export interface QuestionReport {
   reason: string;
   status: "pending" | "edited" | "rejected";
   createdAt: number;
+}
+
+export interface TestGroup {
+  id: string;
+  title: string;
+  quizIds: string[];
+  order: number;
+  isPublished?: boolean;
+  createdAt?: Timestamp;
 }

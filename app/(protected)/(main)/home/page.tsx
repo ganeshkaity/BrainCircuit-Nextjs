@@ -63,7 +63,7 @@ export default function HomePage() {
       // Hide unpublished quizzes for students
       if (q.isPublished === false) return false;
 
-      const matchExam = !filterExam || q.exam === filterExam;
+      const matchExam = !filterExam || (Array.isArray(q.exam) ? q.exam.includes(filterExam) : q.exam === filterExam);
       const matchSubject = !filterSubject || (q.subjects && q.subjects.includes(filterSubject));
       const matchLanguage = !filterLanguage || q.language === filterLanguage;
       const matchTag = !filterTag || (q.badge && (typeof q.badge === 'string' ? q.badge === filterTag : q.badge.label === filterTag));

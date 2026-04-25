@@ -51,6 +51,26 @@ const SelectField = ({ label, name, value, onChange, options }: { label: string;
   </div>
 );
 
+const MultiSelectField = ({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) => (
+  <div className="flex flex-wrap gap-2">
+    {options.map(opt => (
+      <button
+        key={opt}
+        type="button"
+        onClick={() => {
+          if (selected.includes(opt)) onChange(selected.filter(x => x !== opt));
+          else onChange([...selected, opt]);
+        }}
+        className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+          selected.includes(opt) ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+        }`}
+      >
+        {opt}
+      </button>
+    ))}
+  </div>
+);
+
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function CreateQuizPage() {
@@ -58,6 +78,11 @@ export default function CreateQuizPage() {
   const [file, setFile] = useState<File | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
+  
+  const [isMultiExam, setIsMultiExam] = useState(false);
+  const [isMultiSubject, setIsMultiSubject] = useState(false);
+  const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const { showAlert } = useUIStore();
 
   const { data: options } = useQuery({
@@ -89,6 +114,8 @@ export default function CreateQuizPage() {
         language: options.languages[0] || "",
         classLevel: options.classes[0] || "",
       }));
+      if (selectedExams.length === 0) setSelectedExams([options.exams[0] || ""]);
+      if (selectedSubjects.length === 0) setSelectedSubjects([options.subjects[0] || ""]);
     }
   }, [options, form.exam]);
 
@@ -180,7 +207,7 @@ export default function CreateQuizPage() {
           chapter: String(row["chapter"] ?? row["topic"] ?? "General"),
           difficulty: "medium",
           type,
-          exam: form.exam as Question["exam"],
+          exam: isMultiExam ? selectedExams : (form.exam as Question["exam"]),
           language: form.language as Question["language"],
           explanation: String(row["solution_text"] ?? row["explanation"] ?? ""),
           ...(String(row["image_url"] ?? "").trim() ? { imageUrl: String(row["image_url"]) } : {}),
@@ -220,15 +247,27 @@ export default function CreateQuizPage() {
       return;
     }
 
+    const finalExams = isMultiExam ? selectedExams : [form.exam];
+    const finalSubjects = isMultiSubject ? selectedSubjects : [form.subject];
+
+    if (isMultiExam && finalExams.length === 0) {
+      showAlert({ message: "Please select at least one exam.", type: "warning", title: "Missing Exam" });
+      return;
+    }
+    if (isMultiSubject && finalSubjects.length === 0) {
+      showAlert({ message: "Please select at least one subject.", type: "warning", title: "Missing Subject" });
+      return;
+    }
+
     setLoading(true);
     try {
       await createQuizSet({
         title: form.title,
         description: form.description,
-        exam: form.exam as any,
+        exam: isMultiExam ? finalExams : (form.exam as any),
         classLevel: form.classLevel as any,
         language: form.language as any,
-        subjects: [form.subject],
+        subjects: finalSubjects,
         questions,
         questionCount: Number(form.questionCount),
         totalMarks: Number(form.questionCount) * Number(form.marksPerQuestion),
@@ -351,15 +390,53 @@ export default function CreateQuizPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Exam" name="exam" value={form.exam} onChange={handleChange} options={options.exams.map(e => ({ value: e, label: e }))} />
-              <SelectField label="Class" name="classLevel" value={form.classLevel} onChange={handleChange} options={options.classes.map(c => ({ value: c, label: `Class ${c}` }))} />
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+              <span className="text-xs text-gray-400">Exam Mode</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Multi-Exam</span>
+                 <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={isMultiExam} onChange={e => setIsMultiExam(e.target.checked)} />
+                    <div className={`w-8 h-4 rounded-full transition-colors ${isMultiExam ? "bg-purple-500" : "bg-white/10"}`} />
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm ${isMultiExam ? "translate-x-4.5" : "translate-x-0.5"}`} style={{ left: '2px' }} />
+                 </div>
+              </label>
+            </div>
+            
+            {isMultiExam ? (
+              <div className="space-y-3">
+                <MultiSelectField options={options.exams} selected={selectedExams} onChange={setSelectedExams} />
+                <SelectField label="Class Level" name="classLevel" value={form.classLevel} onChange={handleChange} options={options.classes.map(c => ({ value: c, label: `Class ${c}` }))} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField label="Exam" name="exam" value={form.exam} onChange={handleChange} options={options.exams.map(e => ({ value: e, label: e }))} />
+                <SelectField label="Class" name="classLevel" value={form.classLevel} onChange={handleChange} options={options.classes.map(c => ({ value: c, label: `Class ${c}` }))} />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+              <span className="text-xs text-gray-400">Subject Mode</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Multi-Subject</span>
+                 <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={isMultiSubject} onChange={e => setIsMultiSubject(e.target.checked)} />
+                    <div className={`w-8 h-4 rounded-full transition-colors ${isMultiSubject ? "bg-purple-500" : "bg-white/10"}`} />
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm ${isMultiSubject ? "translate-x-4.5" : "translate-x-0.5"}`} style={{ left: '2px' }} />
+                 </div>
+              </label>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Subject" name="subject" value={form.subject} onChange={handleChange} options={options.subjects.map(s => ({ value: s, label: s }))} />
-              <SelectField label="Language" name="language" value={form.language} onChange={handleChange} options={options.languages.map(l => ({ value: l, label: l }))} />
-            </div>
+            {isMultiSubject ? (
+              <div className="space-y-3">
+                <MultiSelectField options={options.subjects} selected={selectedSubjects} onChange={setSelectedSubjects} />
+                <SelectField label="Language" name="language" value={form.language} onChange={handleChange} options={options.languages.map(l => ({ value: l, label: l }))} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField label="Subject" name="subject" value={form.subject} onChange={handleChange} options={options.subjects.map(s => ({ value: s, label: s }))} />
+                <SelectField label="Language" name="language" value={form.language} onChange={handleChange} options={options.languages.map(l => ({ value: l, label: l }))} />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3">
               <SelectField 

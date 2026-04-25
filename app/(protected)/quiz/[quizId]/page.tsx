@@ -2,12 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
-import { getQuizSet, getUserAttempts } from "@/lib/firebase/firestore";
+import { getQuizSet, getUserAttempts, toggleSavedQuiz } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import GradientButton from "@/components/ui/GradientButton";
 import { useRouter } from "next/navigation";
-import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight, Loader2, Target, Calendar } from "lucide-react";
+import { Clock, CheckCircle, BookOpen, AlertCircle, ChevronRight, Loader2, Target, Calendar, Bookmark } from "lucide-react";
+import { formatDuration } from "@/lib/helpers";
 import { useQuizStore } from "@/store/quizStore";
 import { useUserStore } from "@/store/userStore";
 import { useUIStore } from "@/store/uiStore";
@@ -38,8 +39,26 @@ export default function QuizDetailPage({
   });
 
   const { initQuiz, quizId: currentQuizId, isSubmitted } = useQuizStore();
+  const { user, setUser } = useUserStore();
   const { showAlert } = useUIStore();
   const [isStarting, setIsStarting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isSaved = quiz && user?.savedQuizzes?.includes(quiz.id) || false;
+
+  const handleSave = async () => {
+    if (!user || !quiz || isSaving) return;
+    setIsSaving(true);
+    try {
+      const newSaved = await toggleSavedQuiz(user.uid, quiz.id, user.savedQuizzes || []);
+      setUser({ ...user, savedQuizzes: newSaved });
+      showAlert({ message: isSaved ? "Removed from saved tests" : "Saved to your tests", type: "success" });
+    } catch (error) {
+      showAlert({ message: "Failed to save test", type: "error" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleStart = () => {
     if (!quiz || isStarting) return;
@@ -133,7 +152,7 @@ export default function QuizDetailPage({
           
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <span className="bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
-              {quiz.exam}
+              {Array.isArray(quiz.exam) ? (quiz.exam.length > 1 ? "GENERAL" : quiz.exam[0]) : quiz.exam}
             </span>
             <span className="bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
               Class {quiz.classLevel}
@@ -142,11 +161,26 @@ export default function QuizDetailPage({
               {quiz.language}
             </span>
             
-            {quiz.badge && (
-              <span className={`ml-auto bg-gradient-to-r ${quiz.badge.color} text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em] shadow-lg`}>
-                {quiz.badge.label}
-              </span>
-            )}
+            <div className="ml-auto flex items-center gap-2 relative z-30">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`p-1.5 rounded-lg transition-all relative ${
+                  isSaved 
+                    ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" 
+                    : "bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+                }`}
+                title={isSaved ? "Remove from saved" : "Save for later"}
+              >
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} fill={isSaved ? "currentColor" : "none"} />}
+              </button>
+              
+              {quiz.badge && (
+                <span className={`bg-gradient-to-r ${quiz.badge.color} text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em] shadow-lg`}>
+                  {quiz.badge.label}
+                </span>
+              )}
+            </div>
           </div>
 
           <h1 className="font-display font-black text-2xl md:text-3xl text-white mb-3 leading-tight">
@@ -157,7 +191,7 @@ export default function QuizDetailPage({
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <Clock className="text-blue-400 mb-2" size={20} />
               <p className="text-xs text-gray-400 mb-1">Duration</p>
-              <p className="font-bold text-white">{quiz.durationMinutes} Mins</p>
+              <p className="font-bold text-white">{formatDuration(quiz.durationMinutes)}</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <CheckCircle className="text-green-400 mb-2" size={20} />

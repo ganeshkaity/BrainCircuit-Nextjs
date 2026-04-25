@@ -33,7 +33,7 @@ export default function StatChip({
       )}
     >
       {icon && <span className="text-base">{icon}</span>}
-      <span className="opacity-70">{label}:</span>
+      {label && <span className="opacity-70">{label}:</span>}
       <span className="font-semibold">{value}</span>
     </div>
   );
