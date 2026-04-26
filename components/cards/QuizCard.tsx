@@ -47,9 +47,9 @@ export default function QuizCard({ quiz, attempts = [], compact = false }: QuizC
     e.preventDefault();
     if (isLoading) return;
     setIsLoading(true);
-    // Add a tiny delay to ensure the UI updates before the main thread blocks on navigation
+    const slug = quiz.title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
     setTimeout(() => {
-      router.push(`/quiz/${quiz.id}`);
+      router.push(`/quiz/${slug}`);
     }, 50);
   };
 
@@ -134,29 +134,31 @@ export default function QuizCard({ quiz, attempts = [], compact = false }: QuizC
           </p>
         )}
 
-        <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-1.5">
-          <StatChip
-            label="Qns"
-            value={quiz.questionCount}
-            icon={<HelpCircle size={13} className="text-purple-400" />}
-            color="purple"
-            className="flex-1 justify-center px-0.5 py-1 text-[10px]"
-          />
-          <StatChip
-            label=""
-            value={formatDuration(quiz.durationMinutes)}
-            icon={<Clock size={13} className="text-blue-400" />}
-            color="blue"
-            className="flex-1 justify-center px-0.5 py-1 text-[10px]"
-          />
-          <StatChip
-            label="Marks"
-            value={quiz.totalMarks}
-            icon={<CheckCircle size={13} className="text-green-400" />}
-            color="green"
-            className="flex-1 justify-center px-0.5 py-1 text-[10px]"
-          />
-        </div>
+        {!compact && (
+          <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-1.5">
+            <StatChip
+              label="Qns"
+              value={quiz.questionCount}
+              icon={<HelpCircle size={13} className="text-purple-400" />}
+              color="purple"
+              className="flex-1 justify-center px-0.5 py-1 text-[10px]"
+            />
+            <StatChip
+              label=""
+              value={formatDuration(quiz.durationMinutes)}
+              icon={<Clock size={13} className="text-blue-400" />}
+              color="blue"
+              className="flex-1 justify-center px-0.5 py-1 text-[10px]"
+            />
+            <StatChip
+              label="Marks"
+              value={quiz.totalMarks}
+              icon={<CheckCircle size={13} className="text-green-400" />}
+              color="green"
+              className="flex-1 justify-center px-0.5 py-1 text-[10px]"
+            />
+          </div>
+        )}
 
         {/* User Attempt Details */}
         {!compact && (

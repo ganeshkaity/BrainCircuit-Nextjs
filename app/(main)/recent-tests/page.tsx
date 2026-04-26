@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useUserStore } from "@/store/userStore";
 import { useQuery } from "@tanstack/react-query";
 import { getUserAttempts, getQuizSets } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
-import { CheckCircle, Clock, Search, Filter, CalendarDays, BookOpen, Target, ChevronDown } from "lucide-react";
+import { CheckCircle, Clock, Search, Filter, CalendarDays, BookOpen, Target, ChevronDown, History } from "lucide-react";
 import { formatTime, cn } from "@/lib/helpers";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,7 @@ import LoadingState from "@/components/ui/LoadingState";
 import GradientButton from "@/components/ui/GradientButton";
 
 export default function RecentTestsPage() {
-  const { firebaseUid } = useUserStore();
+  const { firebaseUid, isLoading: authLoading } = useUserStore();
   const router = useRouter();
 
   // Filters
@@ -23,6 +23,17 @@ export default function RecentTestsPage() {
   const [marksFilter, setMarksFilter] = useState("All");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [isManualLoading, setIsManualLoading] = useState(false);
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  const handleLoadMore = () => {
+    if (isManualLoading) return;
+    setIsManualLoading(true);
+    setTimeout(() => {
+      setVisibleCount(prev => prev + 10);
+      setIsManualLoading(false);
+    }, 800);
+  };
 
   // Queries
   const { data: attempts = [], isLoading: attemptsLoading } = useQuery({
@@ -37,7 +48,14 @@ export default function RecentTestsPage() {
     queryFn: () => getQuizSets(),
   });
 
-  const isLoading = attemptsLoading || quizzesLoading;
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !firebaseUid) {
+      router.push("/signup?from=/recent-tests");
+    }
+  }, [firebaseUid, authLoading, router]);
+
+  const isLoading = attemptsLoading || quizzesLoading || (!!firebaseUid && authLoading);
 
   // Process data: Combine attempt with its quiz details
   const enrichedAttempts = useMemo(() => {
@@ -72,7 +90,6 @@ export default function RecentTestsPage() {
     return ["All", ...Array.from(exams)];
   }, [enrichedAttempts]);
 
-  // Apply filters
   const filteredAttempts = useMemo(() => {
     return enrichedAttempts.filter(a => {
       // 1. Search (Title)
@@ -102,12 +119,35 @@ export default function RecentTestsPage() {
     });
   }, [enrichedAttempts, search, subjectFilter, examFilter, marksFilter]);
 
+  // Intersection Observer for auto-loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isManualLoading && visibleCount < filteredAttempts.length) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isManualLoading, visibleCount, filteredAttempts.length]);
+
+  if (isLoading) {
+    return <LoadingState message="Fetching your test history..." />;
+  }
+
+  if (!firebaseUid) return null;
+
   return (
     <main className="min-h-dvh pb-24 pt-16">
       <Header title="All Recent Tests" showBack onBack={() => router.back()} />
       
       <div className="px-5 max-w-xl mx-auto mt-6">
-        
         {/* Search Bar */}
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -208,9 +248,7 @@ export default function RecentTestsPage() {
             </h2>
           </div>
 
-          {isLoading ? (
-            <LoadingState message="Fetching your test history..." />
-          ) : filteredAttempts.length > 0 ? (
+          {filteredAttempts.length > 0 ? (
             <>
               {filteredAttempts.slice(0, visibleCount).map((a, i) => {
                 const pct = a.percentage;
@@ -283,15 +321,31 @@ export default function RecentTestsPage() {
                 );
               })}
 
-              {/* Show More Button */}
-              {visibleCount < filteredAttempts.length && (
-                <div className="pt-4 flex justify-center">
-                  <GradientButton 
-                    onClick={() => setVisibleCount(v => v + 10)}
-                    className="px-8"
+              {/* Skeleton Loaders */}
+              {isManualLoading && Array(3).fill(0).map((_, i) => (
+                <div key={`skel-${i}`} className="glass-md rounded-2xl p-6 h-[120px] animate-pulse border border-white/5 bg-white/5">
+                  <div className="w-2/3 h-5 bg-white/10 rounded-lg mb-4" />
+                  <div className="w-full h-3 bg-white/5 rounded-lg mb-2" />
+                  <div className="w-1/2 h-3 bg-white/5 rounded-lg" />
+                </div>
+              ))}
+
+              {/* Trigger element for Infinite Scroll */}
+              {!isManualLoading && visibleCount < filteredAttempts.length && (
+                <div ref={observerRef} className="h-20 w-full flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* Fallback Load More Button */}
+              {!isManualLoading && visibleCount < filteredAttempts.length && (
+                <div className="pt-4 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={handleLoadMore}
+                    className="text-gray-500 text-xs font-bold uppercase tracking-widest hover:text-purple-400 transition-colors"
                   >
-                    Show More
-                  </GradientButton>
+                    Click here if it doesn't load automatically
+                  </button>
                 </div>
               )}
             </>

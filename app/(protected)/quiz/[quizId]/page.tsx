@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
-import { getQuizSet, getUserAttempts, toggleSavedQuiz } from "@/lib/firebase/firestore";
+import { getQuizSet, getQuizSets, getUserAttempts, toggleSavedQuiz } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import GradientButton from "@/components/ui/GradientButton";
@@ -24,11 +24,23 @@ export default function QuizDetailPage({
 }) {
   const router = useRouter();
   const unwrappedParams = use(params);
-  const quizId = unwrappedParams.quizId;
+  const urlParam = unwrappedParams.quizId;
 
   const { data: quiz, isLoading } = useQuery({
-    queryKey: ["quiz", quizId],
-    queryFn: () => getQuizSet(quizId),
+    queryKey: ["quiz", urlParam],
+    queryFn: async () => {
+      // 1. Try to fetch by ID first
+      const byId = await getQuizSet(urlParam);
+      if (byId) return byId;
+
+      // 2. If not found by ID, try matching by slug
+      const allQuizzes = await getQuizSets();
+      const bySlug = allQuizzes.find(q => {
+        const slug = q.title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+        return slug === urlParam;
+      });
+      return bySlug || null;
+    },
   });
 
   const { firebaseUid } = useUserStore();
@@ -74,7 +86,7 @@ export default function QuizDetailPage({
     setIsStarting(true);
 
     // Only reset if it's a new quiz or previous one was submitted
-    if (currentQuizId !== quizId || isSubmitted) {
+    if (currentQuizId !== quiz.id || isSubmitted) {
       // 1. Force uniqueness of the source questions by ID
       const uniqueSourcePool = Array.from(new Map(quiz.questions.map(q => [q.id, q])).values());
 
@@ -111,12 +123,12 @@ export default function QuizDetailPage({
         };
       });
       
-      initQuiz({ quizId, questions: picked, durationMinutes: quiz.durationMinutes });
+      initQuiz({ quizId: quiz.id, questions: picked, durationMinutes: quiz.durationMinutes });
     }
     
     // Tiny delay to ensure React state updates before blocking navigation
     setTimeout(() => {
-      router.push(`/quiz/${quizId}/attempt`);
+      router.push(`/quiz/${quiz.id}/attempt`);
     }, 50);
   };
 
@@ -133,9 +145,9 @@ export default function QuizDetailPage({
     );
   }
 
-  const isResume = currentQuizId === quizId && !isSubmitted;
+  const isResume = quiz ? (currentQuizId === quiz.id && !isSubmitted) : false;
 
-    const hasAttempted = attempts && attempts.some(a => a.quizId === quizId);
+  const hasAttempted = quiz && attempts && attempts.some(a => a.quizId === quiz.id);
   
     return (
       <main className="min-h-dvh pb-24 pt-16">
@@ -162,19 +174,6 @@ export default function QuizDetailPage({
             </span>
             
             <div className="ml-auto flex items-center gap-2 relative z-30">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className={`p-1.5 rounded-lg transition-all relative ${
-                  isSaved 
-                    ? "bg-purple-500/20 border border-purple-500/40 text-purple-400" 
-                    : "bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
-                }`}
-                title={isSaved ? "Remove from saved" : "Save for later"}
-              >
-                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} fill={isSaved ? "currentColor" : "none"} />}
-              </button>
-              
               {quiz.badge && (
                 <span className={`bg-gradient-to-r ${quiz.badge.color} text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em] shadow-lg`}>
                   {quiz.badge.label}
@@ -255,14 +254,14 @@ export default function QuizDetailPage({
           </div>
 
           {/* Previous Attempts Section */}
-          {attempts && attempts.filter(a => a.quizId === quizId).length > 0 && (
+          {quiz && attempts && attempts.filter(a => a.quizId === quiz.id).length > 0 && (
             <div className="mb-8">
               <h3 className="text-xs font-medium text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                 <Target size={14} className="text-purple-400" /> Your Performance History
               </h3>
               <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
                 {attempts
-                  .filter(a => a.quizId === quizId)
+                  .filter(a => a.quizId === quiz.id)
                   .sort((a, b) => {
                     const timeA = (a.createdAt as any)?.seconds || 0;
                     const timeB = (b.createdAt as any)?.seconds || 0;
@@ -280,7 +279,7 @@ export default function QuizDetailPage({
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[10px] font-bold text-gray-300">Attempt #{attempts.filter(a => a.quizId === quizId).length - idx}</span>
+                            <span className="text-[10px] font-bold text-gray-300">Attempt #{attempts.filter(a => a.quizId === quiz.id).length - idx}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-600" />
                             <span className="text-[9px] text-gray-500 flex items-center gap-1">
                               <Calendar size={10} /> {new Date((attempt.createdAt as any)?.seconds * 1000).toLocaleDateString()}
@@ -299,7 +298,7 @@ export default function QuizDetailPage({
                         </div>
                       </div>
                       <button 
-                        onClick={() => router.push(`/quiz/${quizId}/result?attemptId=${attempt.id}`)}
+                        onClick={() => router.push(`/quiz/${quiz.id}/result?attemptId=${attempt.id}`)}
                         className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
                         title="View Full Result"
                       >
@@ -311,17 +310,34 @@ export default function QuizDetailPage({
             </div>
           )}
 
-          <GradientButton size="lg" fullWidth onClick={handleStart} disabled={isStarting}>
-            {isStarting ? (
-              <>
-                <Loader2 size={18} className="animate-spin" /> Starting...
-              </>
-            ) : (
-              <>
-                {isResume ? "Resume Test" : (hasAttempted ? "Retake Test" : "Start Test")} <ChevronRight size={18} />
-              </>
-            )}
-          </GradientButton>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={cn(
+                "w-[20%] h-[56px] flex items-center justify-center rounded-2xl transition-all border",
+                isSaved 
+                  ? "bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.15)]" 
+                  : "bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+              )}
+            >
+              {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Bookmark size={20} fill={isSaved ? "currentColor" : "none"} />}
+            </button>
+
+            <div className="w-[80%]">
+              <GradientButton size="lg" fullWidth onClick={handleStart} disabled={isStarting}>
+                {isStarting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Starting...
+                  </>
+                ) : (
+                  <>
+                    {isResume ? "Resume Test" : (hasAttempted ? "Retake Test" : "Start Test")} <ChevronRight size={18} />
+                  </>
+                )}
+              </GradientButton>
+            </div>
+          </div>
         </motion.div>
       </div>
       <BottomNav />

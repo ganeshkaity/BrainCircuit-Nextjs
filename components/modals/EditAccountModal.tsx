@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, AlertCircle, Link as LinkIcon, KeyRound, Mail, Trash2, CheckCircle, RefreshCcw } from "lucide-react";
+import { X, Save, AlertCircle, Link as LinkIcon, KeyRound, Mail, Trash2, CheckCircle, RefreshCcw, Download } from "lucide-react";
 import { useUserStore } from "@/store/userStore";
 import { doc, updateDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/config";
@@ -16,6 +16,7 @@ import {
 import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import { getOnboardingOptions } from "@/lib/firebase/firestore";
+import { usePWA } from "@/hooks/usePWA";
 
 interface EditAccountModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const { canInstall, installPWA } = usePWA();
 
   const { data: options } = useQuery({
     queryKey: ["onboarding_options"],
@@ -304,6 +306,28 @@ export default function EditAccountModal({ isOpen, onClose }: EditAccountModalPr
             </div>
 
             <hr className="border-white/10" />
+
+            {/* App Settings */}
+            {canInstall && (
+              <>
+                <div className="space-y-3 pb-4">
+                  <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider">App Settings</h3>
+                  <button 
+                    onClick={installPWA}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/20 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/10 rounded-lg"><Download size={16} className="text-purple-400" /></div>
+                      <div className="text-left">
+                        <p className="text-sm text-purple-400 font-medium">Install App</p>
+                        <p className="text-xs text-purple-500/70">Add Brain Circuit to your home screen</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                <hr className="border-white/10" />
+              </>
+            )}
 
             {/* Danger Zone */}
             <div className="space-y-3 pb-4">

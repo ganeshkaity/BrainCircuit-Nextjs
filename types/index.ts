@@ -28,6 +28,13 @@ export interface UserProfile {
   savedQuizzes?: string[]; // Array of quiz IDs
   personalRecommendations?: boolean;
   createdAt: Timestamp;
+  // Streak fields (nested or inline)
+  streak?: number;
+  longestStreak?: number;
+  lastLoginDate?: string;  // YYYY-MM-DD
+  shields?: number;        // 0-2 per month
+  shieldsResetMonth?: string; // YYYY-MM format
+  lastPwaPromptAt?: string; // ISO string
 }
 
 export interface Question {

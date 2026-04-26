@@ -5,22 +5,27 @@ import { useUserStore } from "@/store/userStore";
 import { useQuery } from "@tanstack/react-query";
 import { getUserAttempts } from "@/lib/firebase/firestore";
 import Header from "@/components/layout/Header";
-import { User, Mail, Target, Award, LogOut, CheckCircle, Clock, Pencil, ChevronDown, Info } from "lucide-react";
+import { User, Mail, Target, Award, LogOut, CheckCircle, Clock, Pencil, ChevronDown, Info, ChevronRight } from "lucide-react";
 import { auth, db } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/helpers";
 import EditAccountModal from "@/components/modals/EditAccountModal";
 import LevelInfoModal from "@/components/modals/LevelInfoModal";
+import StreakModal from "@/components/ui/StreakModal";
 import { getOnboardingOptions } from "@/lib/firebase/firestore";
 import { doc, updateDoc } from "firebase/firestore";
+import { usePWA } from "@/hooks/usePWA";
+import { Download } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, clearUser, setUser, firebaseUid } = useUserStore();
   const router = useRouter();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const { canInstall, installPWA } = usePWA();
 
   // Reset imgError when user changes
   useEffect(() => {
@@ -70,16 +75,19 @@ export default function ProfilePage() {
           
           <div className="flex items-center gap-4 mb-4">
             {user.photoURL && !imgError ? (
-              <img 
-                src={user.photoURL} 
-                alt={user.displayName}
-                referrerPolicy="no-referrer"
-                onError={() => setImgError(true)}
-                className="w-16 h-16 rounded-2xl object-cover shadow-glow border-2 border-white/10 shrink-0"
-              />
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-900 border-2 border-white/10 shrink-0 shadow-glow">
+                <img 
+                  src={user.photoURL} 
+                  alt={user.displayName}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-gradient-brand-vivid flex items-center justify-center shadow-glow text-2xl font-bold text-white shrink-0">
-                {user.displayName[0].toUpperCase()}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-brand-vivid flex items-center justify-center shadow-glow text-2xl font-bold text-white shrink-0 border-2 border-white/10 relative overflow-hidden">
+                <div className="absolute inset-0 bg-black/10" />
+                <span className="relative z-10">{user.displayName[0].toUpperCase()}</span>
               </div>
             )}
             <div className="flex-1 relative z-10">
@@ -143,10 +151,46 @@ export default function ProfilePage() {
               <p className="font-semibold text-purple-300">{user.level}</p>
             </div>
 
-            <div className="col-span-2 bg-gradient-to-r from-orange-500/20 to-orange-600/5 rounded-2xl p-3 border border-orange-500/20">
-              <p className="text-xs text-orange-400/80 mb-1">Total Points</p>
-              <p className="font-bold text-xl text-orange-400">{user.points} pts</p>
-            </div>
+            <button 
+              onClick={() => router.push("/leaderboard")}
+              className="bg-gradient-to-br from-orange-500/20 to-orange-600/5 rounded-2xl p-3 border border-orange-500/20 text-left transition-all active:scale-95 group relative"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-orange-400/80">Total Points</p>
+                <ChevronRight size={14} className="text-orange-400/40 group-hover:text-orange-400 transition-colors" />
+              </div>
+              <p className="font-bold text-lg text-orange-400">{user.points} pts</p>
+            </button>
+
+            <button 
+              onClick={() => setIsStreakModalOpen(true)}
+              className="bg-gradient-to-br from-orange-500/20 to-red-600/5 rounded-2xl p-3 border border-orange-500/20 text-left transition-all active:scale-95 group relative"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-orange-400/80">Streak</p>
+                <ChevronRight size={14} className="text-orange-400/40 group-hover:text-orange-400 transition-colors" />
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-lg text-white">{user.streak || 0} Days</p>
+                <svg 
+                  viewBox="0 0 611.999 611.999" 
+                  className="w-5 h-5" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="profileFlameGrad" x1="306" y1="0" x2="306" y2="612" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#ff9a00" />
+                      <stop offset="60%" stopColor="#ff4500" />
+                      <stop offset="100%" stopColor="#ff2200" />
+                    </linearGradient>
+                  </defs>
+                  <path 
+                    d="M216.02,611.195c5.978,3.178,12.284-3.704,8.624-9.4c-19.866-30.919-38.678-82.947-8.706-149.952 c49.982-111.737,80.396-169.609,80.396-169.609s16.177,67.536,60.029,127.585c42.205,57.793,65.306,130.478,28.064,191.029 c-3.495,5.683,2.668,12.388,8.607,9.349c46.1-23.582,97.806-70.885,103.64-165.017c2.151-28.764-1.075-69.034-17.206-119.851 c-20.741-64.406-46.239-94.459-60.992-107.365c-4.413-3.861-11.276-0.439-10.914,5.413c4.299,69.494-21.845,87.129-36.726,47.386 c-5.943-15.874-9.409-43.33-9.409-76.766c0-55.665-16.15-112.967-51.755-159.531c-9.259-12.109-20.093-23.424-32.523-33.073 c-4.5-3.494-11.023,0.018-10.611,5.7c2.734,37.736,0.257,145.885-94.624,275.089c-86.029,119.851-52.693,211.896-40.864,236.826 C153.666,566.767,185.212,594.814,216.02,611.195z"
+                    fill={(user.streak || 0) > 0 ? "url(#profileFlameGrad)" : "#374151"}
+                  />
+                </svg>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -216,6 +260,21 @@ export default function ProfilePage() {
           <LogOut size={18} /> Log Out
         </button>
 
+        {canInstall && (
+          <div className="glass rounded-2xl p-4 mt-6 border border-purple-500/30 flex items-center justify-between">
+            <div>
+              <h3 className="text-white font-bold text-sm mb-1">Install App</h3>
+              <p className="text-gray-400 text-xs">Add Brain Circuit to your home screen</p>
+            </div>
+            <button 
+              onClick={installPWA}
+              className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
+            >
+              <Download size={16} /> Install
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col items-center gap-1 opacity-25 mt-4">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white mb-0.5">
             Brain Circuit
@@ -241,6 +300,14 @@ export default function ProfilePage() {
       <LevelInfoModal 
         isOpen={isLevelModalOpen}
         onClose={() => setIsLevelModalOpen(false)}
+      />
+
+      <StreakModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        streak={user.streak || 0}
+        longestStreak={user.longestStreak || 0}
+        shields={user.shields ?? 2}
       />
     </main>
   );

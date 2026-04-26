@@ -12,6 +12,30 @@ import { Globe, BookOpen, Tag, ChevronDown, Filter, LayoutGrid } from "lucide-re
 import { cn } from "@/lib/helpers";
 import LoadingState from "@/components/ui/LoadingState";
 
+function QuizSkeleton() {
+  return (
+    <div className="animate-pulse flex flex-col h-full bg-white/5 border border-white/10 rounded-3xl p-8 min-h-[240px] relative overflow-hidden">
+      <div className="flex justify-between mb-4">
+        <div className="flex gap-2">
+          <div className="h-5 w-14 bg-white/10 rounded-md" />
+          <div className="h-5 w-14 bg-white/10 rounded-md" />
+        </div>
+        <div className="h-6 w-16 bg-white/10 rounded-md ml-auto" />
+      </div>
+      <div className="h-8 w-3/4 bg-white/10 rounded-lg mb-4" />
+      <div className="space-y-2 mb-8">
+        <div className="h-3 w-full bg-white/5 rounded" />
+        <div className="h-3 w-2/3 bg-white/5 rounded" />
+      </div>
+      <div className="mt-auto pt-6 border-t border-white/10 flex justify-between gap-3">
+        <div className="h-10 flex-1 bg-white/5 rounded-xl" />
+        <div className="h-10 flex-1 bg-white/5 rounded-xl" />
+        <div className="h-10 flex-1 bg-white/5 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { user, firebaseUid } = useUserStore();
   const [filterExam, setFilterExam] = useState("");
@@ -19,15 +43,10 @@ export default function HomePage() {
   const [filterLanguage, setFilterLanguage] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [showCompletedOnly, setShowCompletedOnly] = useState(false);
-
-  // Initialize filter based on personal recommendations
-  useEffect(() => {
-    if (user?.personalRecommendations && user?.targetExam && !filterExam) {
-      setFilterExam(user.targetExam);
-    }
-  }, [user]);
+  const [isAutoLoading, setIsAutoLoading] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
 
   const { data: attempts = [] } = useQuery({
     queryKey: ["attempts", firebaseUid],
@@ -77,6 +96,40 @@ export default function HomePage() {
       return matchExam && matchSubject && matchLanguage && matchTag && matchSearch && matchCompleted;
     });
   }, [quizzes, filterExam, filterSubject, filterLanguage, filterTag, searchQuery, showCompletedOnly, perfectQuizIds]);
+
+  // Initialize filter based on personal recommendations
+  useEffect(() => {
+    if (user?.personalRecommendations && user?.targetExam && !filterExam) {
+      setFilterExam(user.targetExam);
+    }
+  }, [user]);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    if (searchQuery) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Only auto-load if we're not already loading and the button is potentially scrolled past
+        if (entries[0].isIntersecting && visibleCount < filtered.length && !isAutoLoading) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [filtered.length, visibleCount, searchQuery, isAutoLoading]);
+
+  const handleLoadMore = () => {
+    if (isAutoLoading || visibleCount >= filtered.length) return;
+    setIsAutoLoading(true);
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + 10, filtered.length));
+      setIsAutoLoading(false);
+    }, 800);
+  };
 
   const displayQuizzes = useMemo(() => {
     if (searchQuery) return filtered;
@@ -242,17 +295,40 @@ export default function HomePage() {
                   />
                 </motion.div>
               ))}
+
+              {/* Skeletons to fill empty spots when auto-loading */}
+              {isAutoLoading && [...Array(3)].map((_, i) => (
+                <motion.div
+                  key={`skeleton-${i}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <QuizSkeleton />
+                </motion.div>
+              ))}
             </div>
 
-            {/* Load More Button */}
-            {!searchQuery && visibleCount < filtered.length && (
-              <div className="mt-12 flex justify-center pb-12">
+            {/* Manual Load More Button */}
+            {!searchQuery && visibleCount < filtered.length && !isAutoLoading && (
+              <div className="mt-12 flex justify-center">
                 <GradientButton 
-                  onClick={() => setVisibleCount(v => v + 20)}
-                  className="px-8"
+                  onClick={handleLoadMore}
+                  className="px-10"
                 >
-                  Load More
+                  Load More Tests
                 </GradientButton>
+              </div>
+            )}
+
+            {/* Infinite Scroll Trigger */}
+            {!searchQuery && visibleCount < filtered.length && (
+              <div ref={loaderRef} className="h-20" />
+            )}
+
+            {/* End of list message */}
+            {!searchQuery && visibleCount >= filtered.length && filtered.length > 0 && (
+              <div className="py-20 text-center">
+                <p className="text-gray-500 text-sm font-medium">You've reached the end of the collection.</p>
               </div>
             )}
           </>

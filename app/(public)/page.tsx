@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Zap, Trophy, BookOpen, ChevronRight, Star, BarChart3, Globe, Lightbulb, Target } from "lucide-react";
+import { Zap, Trophy, BookOpen, ChevronRight, Star, BarChart3, Globe, Lightbulb, Target, Download } from "lucide-react";
 import GradientButton from "@/components/ui/GradientButton";
+import { usePWA } from "@/hooks/usePWA";
 
 const features = [
   {
@@ -123,23 +124,16 @@ function cn(...classes: (string | boolean | undefined)[]) {
 }
 
 export default function LandingPage() {
+  const { canInstall, installPWA } = usePWA();
+
   return (
     <main className="min-h-dvh flex flex-col relative overflow-hidden bg-gray-950">
-      {/* Moving Neon Gradient Background */}
+      {/* Still Neon Gradient Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <motion.div
-          animate={{
-            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "linear",
-          }}
+        <div
           className="absolute inset-0 opacity-20 blur-[120px]"
           style={{
             background: "linear-gradient(-45deg, #7e22ce, #3b82f6, #06b6d4, #9333ea)",
-            backgroundSize: "400% 400%",
           }}
         />
         {/* Ambient Overlay for depth */}
@@ -230,6 +224,25 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* Install App Banner */}
+      {canInstall && (
+        <section className="px-6 pb-16 max-w-2xl mx-auto w-full">
+          <div className="glass rounded-3xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6 border border-purple-500/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full pointer-events-none" />
+            <div className="text-center sm:text-left relative z-10">
+              <h3 className="font-display font-bold text-2xl text-white mb-2">Install Brain Circuit</h3>
+              <p className="text-gray-400 text-sm max-w-md">Get the ultimate competitive exam prep experience right on your home screen for faster access.</p>
+            </div>
+            <button 
+              onClick={installPWA}
+              className="w-full sm:w-auto px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 relative z-10 shrink-0"
+            >
+              <Download size={18} /> Install App
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="px-6 py-12 border-t border-white/5 bg-black/20 backdrop-blur-md">
