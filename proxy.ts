@@ -7,6 +7,7 @@ const ADMIN_PATHS = ["/admin"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+
   // Allow all public paths
   if (PUBLIC_PATHS.some((p) => pathname === p)) {
     return NextResponse.next();

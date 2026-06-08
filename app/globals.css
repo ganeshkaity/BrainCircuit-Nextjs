@@ -56,6 +56,31 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.bottom-nav-cutout {
+  background:
+    radial-gradient(circle at 50% 0, transparent 0 43px, rgba(8, 12, 32, 0.88) 44px),
+    linear-gradient(180deg, rgba(8, 12, 32, 0.9), rgba(8, 12, 32, 0.96));
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.bottom-nav-cutout::before {
+  content: "";
+  position: absolute;
+  top: -43px;
+  left: 50%;
+  width: 94px;
+  height: 47px;
+  transform: translateX(-50%);
+  border-bottom-left-radius: 94px;
+  border-bottom-right-radius: 94px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 0;
+  pointer-events: none;
+}
+
 /* ── Scrollbar ───────────────────────────────── */
 ::-webkit-scrollbar {
   width: 3px;
